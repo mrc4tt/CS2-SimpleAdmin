@@ -26,7 +26,10 @@ env:
   # Pinned third-party plugin versions bundled into the release zip.
   # When bumping any of these, update both the version and (if needed) the
   # asset URL in the "Bundle runtime dependencies" step below.
-  CS2MENUMANAGER_VERSION: "1.0.42"   # match the NuGet package version in csproj
+  # Note: schwarper's GitHub release tag/asset uses just the patch number
+  # (e.g. "v42") even though the NuGet package version is "1.0.42".
+  # Keep the csproj NuGet version in sync with this value when bumping.
+  CS2MENUMANAGER_RELEASE: "v42"
   PLAYERSETTINGS_VERSION: "0.9.4"
   ANYBASELIB_VERSION: "0.9.4"
 
@@ -106,16 +109,16 @@ jobs:
             rm -rf "$tmpdir"
           }
 
-          bundle "CS2MenuManager v${CS2MENUMANAGER_VERSION}" \
-            "https://github.com/schwarper/CS2MenuManager/releases/download/v${CS2MENUMANAGER_VERSION}/CS2MenuManager.zip" \
+          bundle "CS2MenuManager ${CS2MENUMANAGER_RELEASE}" \
+            "https://github.com/schwarper/CS2MenuManager/releases/download/${CS2MENUMANAGER_RELEASE}/CS2MenuManager-${CS2MENUMANAGER_RELEASE}.zip" \
             "CS2MenuManager_MenuManager"
 
           bundle "PlayerSettings v${PLAYERSETTINGS_VERSION}" \
-            "https://github.com/NickFox007/PlayerSettingsCS2/releases/download/v${PLAYERSETTINGS_VERSION}/PlayerSettingsCS2.zip" \
+            "https://github.com/NickFox007/PlayerSettingsCS2/releases/download/${PLAYERSETTINGS_VERSION}/PlayerSettings.zip" \
             "PlayerSettings"
 
           bundle "AnyBaseLib v${ANYBASELIB_VERSION}" \
-            "https://github.com/NickFox007/AnyBaseLibCS2/releases/download/v${ANYBASELIB_VERSION}/AnyBaseLibCS2.zip" \
+            "https://github.com/NickFox007/AnyBaseLibCS2/releases/download/${ANYBASELIB_VERSION}/AnyBaseLib.zip" \
             "AnyBaseLib"
 
           echo ">> Final bundled tree:"
@@ -183,7 +186,7 @@ jobs:
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           release-notes: |
             Bundled third-party plugins (drop-in install — no separate downloads):
-              • CS2MenuManager v${{ env.CS2MENUMANAGER_VERSION }}
+              • CS2MenuManager ${{ env.CS2MENUMANAGER_RELEASE }}
               • PlayerSettings v${{ env.PLAYERSETTINGS_VERSION }}
               • AnyBaseLib v${{ env.ANYBASELIB_VERSION }}
 
