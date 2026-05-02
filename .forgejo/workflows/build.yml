@@ -28,9 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: cs2-build:latest
-      # cs2-build:latest is built and cached locally on the Runner host;
-      # this stops Forgejo Runner from trying to pull it from a registry.
-      options: --pull=never
+      # cs2-build:latest is built and cached locally on the Runner host.
+      # Forgejo Runner must be told not to pull it: set
+      # `container.force_pull: false` in the runner's config.yaml.
     outputs:
       build_version: ${{ steps.get_version.outputs.VERSION }}
     steps:
@@ -105,7 +105,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: cs2-build:latest
-      options: --pull=never
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
 
