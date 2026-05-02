@@ -116,11 +116,12 @@ jobs:
             printf -v "$out_url_var" '%s' "$zip_url"
           }
 
-          # Robust extractor: handles three common zip layouts —
+          # Robust extractor: handles four common zip layouts —
           #   a) addons/counterstrikesharp/...   (server-relative)
           #   b) counterstrikesharp/...          (CSS-relative)
-          #   c) <plugin>/                       (raw plugin folder)
-          # In case (c) we drop the contents into plugins/$fallback_name/.
+          #   c) plugins/ and/or shared/...      (CSS-content at zip root)
+          #   d) <plugin>/                       (raw plugin folder)
+          # In case (d) we drop the contents into plugins/$fallback_name/.
           bundle() {
             local name="$1" url="$2" fallback_name="$3"
             local tmpdir
@@ -135,6 +136,8 @@ jobs:
               cp -r "$tmpdir/extract/addons/counterstrikesharp/." "${{ env.OUTPUT_PATH }}/"
             elif [ -d "$tmpdir/extract/counterstrikesharp" ]; then
               cp -r "$tmpdir/extract/counterstrikesharp/." "${{ env.OUTPUT_PATH }}/"
+            elif [ -d "$tmpdir/extract/plugins" ] || [ -d "$tmpdir/extract/shared" ]; then
+              cp -r "$tmpdir/extract/." "${{ env.OUTPUT_PATH }}/"
             else
               echo "!! Unknown zip layout for $name; falling back to plugins/$fallback_name/"
               mkdir -p "${{ env.OUTPUT_PATH }}/plugins/$fallback_name"
