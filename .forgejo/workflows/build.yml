@@ -31,6 +31,11 @@ jobs:
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
 
+      - name: Install build tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends zip unzip tar
+
       - name: Setup .NET
         uses: https://github.com/actions/setup-dotnet@v4
         with:
