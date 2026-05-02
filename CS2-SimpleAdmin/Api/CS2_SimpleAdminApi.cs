@@ -203,7 +203,7 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
 
     public void RegisterMenuCategory(string categoryId, string categoryName, string permission = "@css/generic")
     {
-        Menus.MenuManager.Instance.RegisterCategory(categoryId, categoryName, permission);
+        Menus.AdminMenuRegistry.Instance.RegisterCategory(categoryId, categoryName, permission);
     }
 
     public void RegisterMenuCategory(string categoryId, string categoryNameKey, string permission, object moduleLocalizer)
@@ -211,13 +211,13 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
         if (moduleLocalizer is not IStringLocalizer localizer)
             throw new InvalidOperationException("moduleLocalizer must be an IStringLocalizer instance");
 
-        Menus.MenuManager.Instance.RegisterCategory(categoryId, categoryNameKey, permission, localizer);
+        Menus.AdminMenuRegistry.Instance.RegisterCategory(categoryId, categoryNameKey, permission, localizer);
     }
 
     public void RegisterMenu(string categoryId, string menuId, string menuName,
         Func<CCSPlayerController, object> menuFactory, string? permission = null, string? commandName = null)
     {
-        Menus.MenuManager.Instance.RegisterMenu(categoryId, menuId, menuName, BuilderFactory, permission, commandName);
+        Menus.AdminMenuRegistry.Instance.RegisterMenu(categoryId, menuId, menuName, BuilderFactory, permission, commandName);
         return;
 
         MenuBuilder BuilderFactory(CCSPlayerController player)
@@ -228,13 +228,13 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
             // Dodaj automatyczną obsługę przycisku 'Wróć'
             menuBuilder.WithBackAction(p =>
             {
-                if (Menus.MenuManager.Instance.GetMenuCategories().TryGetValue(categoryId, out var category))
+                if (Menus.AdminMenuRegistry.Instance.GetMenuCategories().TryGetValue(categoryId, out var category))
                 {
-                    Menus.MenuManager.Instance.CreateCategoryMenuPublic(category, p).OpenMenu(p);
+                    Menus.AdminMenuRegistry.Instance.CreateCategoryMenuPublic(category, p).OpenMenu(p);
                 }
                 else
                 {
-                    Menus.MenuManager.Instance.OpenMainMenu(p);
+                    Menus.AdminMenuRegistry.Instance.OpenMainMenu(p);
                 }
             });
 
@@ -245,7 +245,7 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
     public void RegisterMenu(string categoryId, string menuId, string menuName,
         Func<CCSPlayerController, MenuContext, object> menuFactory, string? permission = null, string? commandName = null)
     {
-        Menus.MenuManager.Instance.RegisterMenu(categoryId, menuId, menuName, BuilderFactory, permission, commandName);
+        Menus.AdminMenuRegistry.Instance.RegisterMenu(categoryId, menuId, menuName, BuilderFactory, permission, commandName);
         return;
 
         MenuBuilder BuilderFactory(CCSPlayerController player)
@@ -258,13 +258,13 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
             // Dodaj automatyczną obsługę przycisku 'Wróć'
             menuBuilder.WithBackAction(p =>
             {
-                if (Menus.MenuManager.Instance.GetMenuCategories().TryGetValue(categoryId, out var category))
+                if (Menus.AdminMenuRegistry.Instance.GetMenuCategories().TryGetValue(categoryId, out var category))
                 {
-                    Menus.MenuManager.Instance.CreateCategoryMenuPublic(category, p).OpenMenu(p);
+                    Menus.AdminMenuRegistry.Instance.CreateCategoryMenuPublic(category, p).OpenMenu(p);
                 }
                 else
                 {
-                    Menus.MenuManager.Instance.OpenMainMenu(p);
+                    Menus.AdminMenuRegistry.Instance.OpenMainMenu(p);
                 }
             });
 
@@ -278,7 +278,7 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
         if (moduleLocalizer is not IStringLocalizer localizer)
             throw new InvalidOperationException("moduleLocalizer must be an IStringLocalizer instance");
 
-        Menus.MenuManager.Instance.RegisterMenu(categoryId, menuId, menuNameKey, BuilderFactory, permission, commandName, localizer);
+        Menus.AdminMenuRegistry.Instance.RegisterMenu(categoryId, menuId, menuNameKey, BuilderFactory, permission, commandName, localizer);
         return;
 
         MenuBuilder BuilderFactory(CCSPlayerController player)
@@ -291,13 +291,13 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
             // Dodaj automatyczną obsługę przycisku 'Wróć'
             menuBuilder.WithBackAction(p =>
             {
-                if (Menus.MenuManager.Instance.GetMenuCategories().TryGetValue(categoryId, out var category))
+                if (Menus.AdminMenuRegistry.Instance.GetMenuCategories().TryGetValue(categoryId, out var category))
                 {
-                    Menus.MenuManager.Instance.CreateCategoryMenuPublic(category, p).OpenMenu(p);
+                    Menus.AdminMenuRegistry.Instance.CreateCategoryMenuPublic(category, p).OpenMenu(p);
                 }
                 else
                 {
-                    Menus.MenuManager.Instance.OpenMainMenu(p);
+                    Menus.AdminMenuRegistry.Instance.OpenMainMenu(p);
                 }
             });
 
@@ -308,7 +308,7 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
 
     public void UnregisterMenu(string categoryId, string menuId)
     {
-        Menus.MenuManager.Instance.UnregisterMenu(categoryId, menuId);
+        Menus.AdminMenuRegistry.Instance.UnregisterMenu(categoryId, menuId);
     }
 
     public object CreateMenuWithBack(string title, string categoryId, CCSPlayerController player)
@@ -316,13 +316,13 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
         var builder = new MenuBuilder(title);
         builder.WithBackAction(p =>
         {
-            if (Menus.MenuManager.Instance.GetMenuCategories().TryGetValue(categoryId, out var category))
+            if (Menus.AdminMenuRegistry.Instance.GetMenuCategories().TryGetValue(categoryId, out var category))
             {
-                Menus.MenuManager.Instance.CreateCategoryMenuPublic(category, p).OpenMenu(p);
+                Menus.AdminMenuRegistry.Instance.CreateCategoryMenuPublic(category, p).OpenMenu(p);
             }
             else
             {
-                Menus.MenuManager.Instance.OpenMainMenu(p);
+                Menus.AdminMenuRegistry.Instance.OpenMainMenu(p);
             }
         });
 
@@ -334,7 +334,7 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
         // Get translated title if module has localizer
         string title = context.MenuTitle;
 
-        if (Menus.MenuManager.Instance.GetMenuCategories().TryGetValue(context.CategoryId, out var category))
+        if (Menus.AdminMenuRegistry.Instance.GetMenuCategories().TryGetValue(context.CategoryId, out var category))
         {
             // Check if this specific menu has a localizer
             if (category.MenuLocalizers.TryGetValue(context.MenuId, out var menuLocalizer))
@@ -389,7 +389,7 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
         // Get translated title if module has localizer
         string title = context.MenuTitle;
 
-        if (Menus.MenuManager.Instance.GetMenuCategories().TryGetValue(context.CategoryId, out var category))
+        if (Menus.AdminMenuRegistry.Instance.GetMenuCategories().TryGetValue(context.CategoryId, out var category))
         {
             // Check if this specific menu has a localizer
             if (category.MenuLocalizers.TryGetValue(context.MenuId, out var menuLocalizer))

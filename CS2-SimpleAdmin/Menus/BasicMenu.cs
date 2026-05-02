@@ -17,7 +17,7 @@ public abstract class BasicMenu
         /// </summary>
         public static void Initialize()
         {
-            var manager = MenuManager.Instance;
+            var manager = AdminMenuRegistry.Instance;
 
             // Players category menus - using translation keys
             manager.RegisterMenu("players", "slap", "sa_slap", CreateSlapMenu, "@css/slay");

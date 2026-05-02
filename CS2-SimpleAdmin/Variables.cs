@@ -1,9 +1,7 @@
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Capabilities;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using CS2_SimpleAdmin.Models;
 using CS2_SimpleAdminApi;
-using MenuManager;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -62,10 +60,6 @@ public partial class CS2_SimpleAdmin
     private static MemoryFunctionVoid<CBasePlayerController, CCSPlayerPawn, bool, bool>?
         _cBasePlayerControllerSetPawnFunc;
 
-    // Menu API and Capabilities
-    internal static IMenuApi? MenuApi;
-    private static readonly PluginCapability<IMenuApi> MenuCapability = new("menu:nfcore");
-
     // Shared API
     internal static Api.CS2_SimpleAdminApi? SimpleAdminApi { get; private set; }
 
@@ -81,6 +75,6 @@ public partial class CS2_SimpleAdmin
     internal Timer? PlayersTimer = null;
     
     // Funny list
-    private readonly List<string> _requiredPlugins = ["MenuManagerCore", "PlayerSettings"];
-    private readonly List<string> _requiredShared = ["MenuManagerApi", "PlayerSettingsApi", "AnyBaseLib", "CS2-SimpleAdminApi"];
+    private readonly List<string> _requiredPlugins = ["CS2MenuManager_MenuManager", "PlayerSettings"];
+    private readonly List<string> _requiredShared = ["PlayerSettingsApi", "AnyBaseLib", "CS2-SimpleAdminApi"];
 }

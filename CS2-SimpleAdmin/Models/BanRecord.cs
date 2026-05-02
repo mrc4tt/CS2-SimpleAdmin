@@ -27,7 +27,6 @@ public record BanRecord
 
     [Column("created")]
     public DateTime Created { get; init; }
-
     [Column("status")]
     public required string Status { get; init; }
 

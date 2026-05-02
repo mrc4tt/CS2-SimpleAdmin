@@ -13,7 +13,7 @@
 <PropertyGroup Condition="'$(Configuration)' == 'Release'">
         <DebugType>none</DebugType>
         <DebugSymbols>false</DebugSymbols>
-        <PublishTrimmed>true</PublishTrimmed>
+        <PublishTrimmed>false</PublishTrimmed>
         <DebuggerSupport>false</DebuggerSupport>
 <!--        <GenerateDependencyFile>false</GenerateDependencyFile>-->
 </PropertyGroup>
@@ -47,6 +47,7 @@
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
     <PackageReference Include="System.Linq.Async" Version="7.0.1" />
     <PackageReference Include="ZLinq" Version="1.5.6" />
+    <PackageReference Include="CS2MenuManager" Version="1.0.42" />
   </ItemGroup>
 
   <ItemGroup>
@@ -159,12 +160,5 @@
   <ItemGroup>
     <None Update="admin_help.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-
-	<ItemGroup>
-		<Reference Include="MenuManagerApi">
-			<HintPath>3rd_party\MenuManagerApi.dll</HintPath>
-            <Private>False</Private>
-		</Reference>
-	</ItemGroup>
 
 </Project>

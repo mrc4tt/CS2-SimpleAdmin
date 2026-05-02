@@ -6,7 +6,6 @@ using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Memory;
-using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using CS2_SimpleAdminApi;
 using Microsoft.Extensions.Localization;
@@ -23,7 +22,10 @@ using System.Text.RegularExpressions;
 using CounterStrikeSharp.API.Core.Plugin.Host;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
 using CS2_SimpleAdmin.Managers;
-using MenuManager;
+using CS2MenuManager.API.Class;
+using CS2MenuManager.API.Enum;
+using CS2MenuManager.API.Interface;
+using CS2MenuManager.API.Menu;
 using ZLinq;
 
 namespace CS2_SimpleAdmin;
@@ -350,12 +352,12 @@ internal static class Helper
         });
     }
 
-    internal static void HandleVotes(CCSPlayerController player, ChatMenuOption option)
+    internal static void HandleVotes(CCSPlayerController player, ItemOption option)
     {
         if (!CS2_SimpleAdmin.VoteInProgress)
             return;
 
-        option.Disabled = true;
+        option.DisableOption = DisableOption.DisableShowNumber;
         CS2_SimpleAdmin.VoteAnswers[option.Text]++;
     }
 
@@ -904,38 +906,32 @@ internal static class Helper
                 commandString]));
     }
 
-    #pragma warning disable CS8604
     public static IMenu? CreateMenu(string title, Action<CCSPlayerController>? backAction = null, Action<CCSPlayerController>? resetAction = null)
     {
-        if (CS2_SimpleAdmin.MenuApi == null)
-        {
-            return null;
-        }
-
+        var plugin = CS2_SimpleAdmin.Instance;
         var menuType = CS2_SimpleAdmin.Instance.Config.MenuConfigs.MenuType.ToLower();
-        var menu = menuType switch
+        IMenu menu = menuType switch
         {
-            _ when menuType.Equals("selectable", StringComparison.CurrentCultureIgnoreCase) =>
-                CS2_SimpleAdmin.MenuApi.GetMenu(title, backAction, resetAction),
-
-            _ when menuType.Equals("dynamic", StringComparison.CurrentCultureIgnoreCase) =>
-                CS2_SimpleAdmin.MenuApi.GetMenuForcetype(title, MenuType.ButtonMenu, backAction, resetAction),
-
-            _ when menuType.Equals("center", StringComparison.CurrentCultureIgnoreCase) =>
-                CS2_SimpleAdmin.MenuApi.GetMenuForcetype(title, MenuType.CenterMenu, backAction, resetAction),
-
-            _ when menuType.Equals("chat", StringComparison.CurrentCultureIgnoreCase) =>
-                CS2_SimpleAdmin.MenuApi.GetMenuForcetype(title, MenuType.ChatMenu, backAction, resetAction),
-
-            _ when menuType.Equals("console", StringComparison.CurrentCultureIgnoreCase) =>
-                CS2_SimpleAdmin.MenuApi.GetMenuForcetype(title, MenuType.ConsoleMenu, backAction, resetAction),
-
-            _ => CS2_SimpleAdmin.MenuApi.GetMenu(title, backAction, resetAction)
+            "chat" => new ChatMenu(title, plugin),
+            "console" => new ConsoleMenu(title, plugin),
+            "center" => new CenterHtmlMenu(title, plugin),
+            "dynamic" => new WasdMenu(title, plugin),
+            "selectable" => new PlayerMenu(title, plugin),
+            _ => new PlayerMenu(title, plugin)
         };
+
+        if (backAction != null)
+            menu.PrevMenu = new BackActionMenu(title, plugin, backAction);
 
         return menu;
     }
-    #pragma warning restore CS8604
+
+    private sealed class BackActionMenu(string title, BasePlugin plugin, Action<CCSPlayerController> back)
+        : ChatMenu(title, plugin)
+    {
+        public override void Display(CCSPlayerController player, int time) => back(player);
+        public override void DisplayAt(CCSPlayerController player, int firstItem, int time) => back(player);
+    }
 
     internal static IPluginManager? GetPluginManager()
     {

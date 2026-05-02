@@ -23,7 +23,7 @@ public static class DurationMenu
             var duration = durationItem.Duration; // Capture in local variable
             var name = durationItem.Name;
 
-            menu.AddMenuOption(name, (controller, option) =>
+            menu.AddItem(name, (controller, option) =>
             {
                 capturedAction(capturedAdmin, capturedPlayer, duration);
             });
@@ -37,7 +37,7 @@ public static class DurationMenu
         var menu = AdminMenu.CreateMenu(menuName);
         foreach (var durationItem in CS2_SimpleAdmin.Instance.Config.MenuConfigs.Durations)
         {
-            menu?.AddMenuOption(durationItem.Name, (_, _) => { onSelectAction(admin, player, durationItem.Duration); });
+            menu?.AddItem(durationItem.Name, (_, _) => { onSelectAction(admin, player, durationItem.Duration); });
         }
 
         if (menu != null) AdminMenu.OpenMenu(admin, menu);

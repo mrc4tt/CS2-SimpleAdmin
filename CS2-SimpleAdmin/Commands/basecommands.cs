@@ -6,7 +6,6 @@ using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Entities;
-using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Utils;
 using CS2_SimpleAdmin.Managers;
 using CS2_SimpleAdmin.Menus;
@@ -18,7 +17,10 @@ using System.Reflection;
 using System.Text.Json;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using CS2_SimpleAdmin.Models;
-using MenuManager;
+using CS2MenuManager.API.Class;
+using CS2MenuManager.API.Enum;
+using CS2MenuManager.API.Interface;
+using CS2MenuManager.API.Menu;
 using System.Diagnostics.CodeAnalysis;
 
 namespace CS2_SimpleAdmin;
@@ -598,7 +600,6 @@ public partial class CS2_SimpleAdmin
                 _logger?.LogError(ex, "css_clearall failed for pattern {pattern}", pattern);
             }
 
-            // Invalidate live state on the game thread
             if (error == null)
             {
                 ulong.TryParse(pattern, out var steamIdNum);
@@ -670,7 +671,7 @@ public partial class CS2_SimpleAdmin
                 try
                 {
                     var stale = Directory.EnumerateFiles(backupDir, "cs2-simpleadmin-*.sqlite")
-                        .OrderByDescending(p => p, StringComparer.Ordinal) // timestamps sort lexically
+                        .OrderByDescending(p => p, StringComparer.Ordinal)
                         .Skip(retain)
                         .ToList();
                     foreach (var path in stale)
@@ -875,10 +876,10 @@ public partial class CS2_SimpleAdmin
 
         DisconnectedPlayers.ForEach(player =>
         {
-            disconnectedMenu?.AddMenuOption(player.Name, (_, _) =>
+            disconnectedMenu?.AddItem(player.Name, (_, _) =>
             {
                 var disconnectedMenuAction = Helper.CreateMenu(_localizer["sa_menu_disconnected_action_title"]);
-                disconnectedMenuAction?.AddMenuOption(_localizer["sa_ban"], (_, _) =>
+                disconnectedMenuAction?.AddItem(_localizer["sa_ban"], (_, _) =>
                 {
                     DurationMenu.OpenMenu(caller, _localizer["sa_ban"], player, (_, _, duration) =>
                         ReasonMenu.OpenMenu(caller, PenaltyType.Ban, _localizer["sa_reason"], player, (_, _, reason) =>
@@ -900,10 +901,10 @@ public partial class CS2_SimpleAdmin
                                 Helper.ShowAdminActivity(activityMessageKey, caller.PlayerName, false ,adminActivityArgs);
                             }
                             
-                            MenuApi?.CloseMenu(caller);
+                            MenuManager.CloseActiveMenu(caller);
                         }));
                 });
-                disconnectedMenuAction?.AddMenuOption(_localizer["sa_mute"], (_, _) =>
+                disconnectedMenuAction?.AddItem(_localizer["sa_mute"], (_, _) =>
                 {
                     DurationMenu.OpenMenu(caller, _localizer["sa_mute"], player, (_, _, duration) =>
                         ReasonMenu.OpenMenu(caller, PenaltyType.Mute, _localizer["sa_reason"], player, (_, _, reason) =>
@@ -925,10 +926,10 @@ public partial class CS2_SimpleAdmin
                                 Helper.ShowAdminActivity(activityMessageKey, caller.PlayerName, false, adminActivityArgs);
                             }
                             
-                            MenuApi?.CloseMenu(caller);
+                            MenuManager.CloseActiveMenu(caller);
                         }));
                 });
-                disconnectedMenuAction?.AddMenuOption(_localizer["sa_gag"], (_, _) =>
+                disconnectedMenuAction?.AddItem(_localizer["sa_gag"], (_, _) =>
                 {
                     DurationMenu.OpenMenu(caller, _localizer["sa_gag"], player, (_, _, duration) =>
                         ReasonMenu.OpenMenu(caller, PenaltyType.Mute, _localizer["sa_reason"], player, (_, _, reason) =>
@@ -950,10 +951,10 @@ public partial class CS2_SimpleAdmin
                                 Helper.ShowAdminActivity(activityMessageKey, caller.PlayerName, false, adminActivityArgs);
                             }
                             
-                            MenuApi?.CloseMenu(caller);
+                            MenuManager.CloseActiveMenu(caller);
                         }));
                 });
-                disconnectedMenuAction?.AddMenuOption(_localizer["sa_silence"], (_, _) =>
+                disconnectedMenuAction?.AddItem(_localizer["sa_silence"], (_, _) =>
                 {
                     DurationMenu.OpenMenu(caller, _localizer["sa_silence"], player, (_, _, duration) =>
                         ReasonMenu.OpenMenu(caller, PenaltyType.Mute, _localizer["sa_reason"], player, (_, _, reason) =>
@@ -975,15 +976,15 @@ public partial class CS2_SimpleAdmin
                                 Helper.ShowAdminActivity(activityMessageKey, caller.PlayerName, false, adminActivityArgs);
                             }
                             
-                            MenuApi?.CloseMenu(caller);
+                            MenuManager.CloseActiveMenu(caller);
                         }));
                 });
 
-                disconnectedMenuAction?.Open(caller);
+                disconnectedMenuAction?.Display(caller, 0);
             });
         });
 
-        disconnectedMenu?.Open(caller);
+        disconnectedMenu?.Display(caller, 0);
     }
 
     /// <summary>
@@ -1027,7 +1028,7 @@ public partial class CS2_SimpleAdmin
 
                 sortedWarns.ForEach(w =>
                 {
-                    warnsMenu?.AddMenuOption($"[{((string)w.status == "ACTIVE" ? $"{ChatColors.LightRed}X" : $"{ChatColors.Lime}✔️")}{ChatColors.Default}] {(string)w.reason}",
+                    warnsMenu?.AddItem($"[{((string)w.status == "ACTIVE" ? $"{ChatColors.LightRed}X" : $"{ChatColors.Lime}✔️")}{ChatColors.Default}] {(string)w.reason}",
                         (controller, option) =>
                         {
                             _ = WarnManager.UnwarnPlayer(PlayersInfo[steamId], (int)w.id);
@@ -1037,7 +1038,7 @@ public partial class CS2_SimpleAdmin
 
                 await Server.NextWorldUpdateAsync(() =>
                 {
-                    warnsMenu?.Open(caller);
+                    warnsMenu?.Display(caller, 0);
                 });
             });
         });
@@ -1404,7 +1405,7 @@ public partial class CS2_SimpleAdmin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnPluginManagerCommand(CCSPlayerController? caller, CommandInfo commandInfo)
     {
-        if (MenuApi == null || caller == null)
+        if (caller == null)
             return;
         
         var pluginManager = Helper.GetPluginManager();
@@ -1438,9 +1439,13 @@ public partial class CS2_SimpleAdmin
             if (nestedPlugin == null) continue;
             
             var status = state?.ToUpper() != "UNLOADED" ? "ON" : "OFF";
-            var allowedMenuTypes = new[] { "chat", "console" };
+            var configMenuType = Config.MenuConfigs.MenuType.ToLower();
+            var rendersHtml = configMenuType is "center" or "dynamic"
+                || (configMenuType == "selectable"
+                    && MenuTypeManager.GetPlayerMenuType(caller) is { } t
+                    && (t == typeof(CenterHtmlMenu) || t == typeof(WasdMenu)));
 
-            if (!allowedMenuTypes.Contains(Config.MenuConfigs.MenuType) && MenuApi.GetMenuType(caller) >= MenuType.CenterMenu)
+            if (rendersHtml)
                 status = state?.ToUpper() != "UNLOADED" ? "<font color='lime'>ON</font>" : "<font color='red'>OFF</font>";
             var nestedType = nestedPlugin.GetType();
             var moduleName = nestedType.GetProperty("ModuleName")?.GetValue(nestedPlugin)?.ToString() ?? "Unknown";
@@ -1448,7 +1453,7 @@ public partial class CS2_SimpleAdmin
             // var moduleAuthor = nestedType.GetProperty("ModuleAuthor")?.GetValue(nestedPlugin)?.ToString();
             // var moduleDescription = nestedType.GetProperty("ModuleDescription")?.GetValue(nestedPlugin)?.ToString();
 
-            pluginsMenu?.AddMenuOption($"({status}) [{moduleName} {moduleVersion}]", (_, _) =>
+            pluginsMenu?.AddItem($"({status}) [{moduleName} {moduleVersion}]", (_, _) =>
             {
                 if (state?.ToUpper() != "UNLOADED")
                 {
@@ -1467,7 +1472,7 @@ public partial class CS2_SimpleAdmin
             // Console.WriteLine($"[#{pluginId}:{state?.ToUpper()}]: \"{moduleName ?? "Unknown"}\" ({moduleVersion ?? "Unknown"}) by {moduleAuthor}");
         }
         
-        pluginsMenu?.Open(caller);
+        pluginsMenu?.Display(caller, 0);
     }
 
     /// <summary>

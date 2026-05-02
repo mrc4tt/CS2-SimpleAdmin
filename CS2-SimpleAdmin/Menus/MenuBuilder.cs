@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Translations;
+using CS2MenuManager.API.Enum;
 using Microsoft.Extensions.Localization;
 
 namespace CS2_SimpleAdmin.Menus;
@@ -182,13 +183,13 @@ public class MenuBuilder
             // Get localized option name
             var localizedName = GetLocalizedOptionName(option);
 
-            menu.AddMenuOption(localizedName, (menuPlayer, menuOption) =>
+            menu.AddItem(localizedName, (menuPlayer, _) =>
             {
                 option.Action?.Invoke(menuPlayer);
-            }, option.Disabled);
+            }, option.Disabled ? DisableOption.DisableShowNumber : DisableOption.None);
         }
 
-        menu.Open(player);
+        menu.Display(player, 0);
     }
 
     /// <summary>

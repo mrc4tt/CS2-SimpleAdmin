@@ -1,7 +1,5 @@
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Admin;
-using CounterStrikeSharp.API.Modules.Entities;
-using CounterStrikeSharp.API.Modules.Menu;
+using CS2MenuManager.API.Interface;
 
 namespace CS2_SimpleAdmin.Menus;
 
@@ -9,27 +7,17 @@ public static class AdminMenu
 {
     public static void OpenMenu(CCSPlayerController admin)
     {
-        MenuManager.Instance.OpenMainMenu(admin);
+        AdminMenuRegistry.Instance.OpenMainMenu(admin);
     }
 
     public static IMenu? CreateMenu(string title, Action<CCSPlayerController>? backAction = null)
     {
         return Helper.CreateMenu(title, backAction);
-        // return CS2_SimpleAdmin.Instance.Config.UseChatMenu ? new ChatMenu(title) : new CenterHtmlMenu(title, CS2_SimpleAdmin.Instance);
     }
 
     public static void OpenMenu(CCSPlayerController player, IMenu menu)
     {
-        menu.Open(player);
-        // switch (menu)
-        // {
-        // 	case CenterHtmlMenu centerHtmlMenu:
-        // 		MenuManager.OpenCenterHtmlMenu(CS2_SimpleAdmin.Instance, player, centerHtmlMenu);
-        // 		break;
-        // 	case ChatMenu chatMenu:
-        // 		MenuManager.OpenChatMenu(player, chatMenu);
-        // 		break;
-        // }
+        menu.Display(player, 0);
     }
 
     // public static void OpenMenu(CCSPlayerController admin)

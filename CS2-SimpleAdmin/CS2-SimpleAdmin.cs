@@ -67,22 +67,12 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         PlayersTimer = null;
         PlayerManager.CheckPlayersTimer();
         
-        Menus.MenuManager.Instance.InitializeDefaultCategories();
+        Menus.AdminMenuRegistry.Instance.InitializeDefaultCategories();
         BasicMenu.Initialize();
     }
 
     public override void OnAllPluginsLoaded(bool hotReload)
     {
-        try
-        {
-            MenuApi = MenuCapability.Get();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError("Unable to load required plugins ... \n{exception}", ex.Message);
-            Unload(false);
-        }
-
         RegisterEvents();
         AddTimer(0.5f, RegisterCommands.InitializeCommands);
         AddTimer(3.0f, () => ReloadAdmins(null));

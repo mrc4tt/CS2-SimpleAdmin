@@ -191,9 +191,6 @@ public static class RegisterCommands
             {
                 if (command.Value.Aliases == null) continue;
             
-                CS2_SimpleAdmin._logger?.LogInformation(
-                    $"Registering command: `{command.Key}` with aliases: `{string.Join(", ", command.Value.Aliases)}`");
-            
                 var mapping = CommandMappings.FirstOrDefault(m => m.CommandKey == command.Key);
                 if (mapping == null || command.Value.Aliases.Length == 0) continue;
             
@@ -208,7 +205,6 @@ public static class RegisterCommands
         {
             foreach (var definition in definitions)
             {
-                CS2_SimpleAdmin._logger?.LogInformation($"Registering custom command: `{name}`");
                 CS2_SimpleAdmin.Instance.AddCommand(name, definition.Description, definition.Callback);
             }
         }

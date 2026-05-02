@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Entities;
+using CS2MenuManager.API.Enum;
 
 namespace CS2_SimpleAdmin.Menus;
 
@@ -35,7 +36,7 @@ public static class ManageAdminsMenu
         foreach (var menuOptionData in options)
         {
             var menuName = menuOptionData.Name;
-            menu?.AddMenuOption(menuName, (_, _) => { menuOptionData.Action.Invoke(); }, menuOptionData.Disabled);
+            menu?.AddItem(menuName, (_, _) => { menuOptionData.Action.Invoke(); }, menuOptionData.Disabled ? DisableOption.DisableShowNumber : DisableOption.None);
         }
 
         if (menu != null) AdminMenu.OpenMenu(admin, menu);
@@ -48,7 +49,7 @@ public static class ManageAdminsMenu
         foreach (var adminFlag in CS2_SimpleAdmin.Instance.Config.MenuConfigs.AdminFlags)
         {
             var disabled = AdminManager.PlayerHasPermissions(player, adminFlag.Flag);
-            menu?.AddMenuOption(adminFlag.Name, (_, _) => { AddAdmin(admin, player, adminFlag.Flag); }, disabled);
+            menu?.AddItem(adminFlag.Name, (_, _) => { AddAdmin(admin, player, adminFlag.Flag); }, disabled ? DisableOption.DisableShowNumber : DisableOption.None);
         }
 
         if (menu != null) AdminMenu.OpenMenu(admin, menu);

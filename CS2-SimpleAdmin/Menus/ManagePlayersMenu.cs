@@ -3,6 +3,8 @@ using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Utils;
 using CS2_SimpleAdminApi;
+using CS2MenuManager.API.Class;
+using CS2MenuManager.API.Enum;
 
 namespace CS2_SimpleAdmin.Menus;
 
@@ -80,7 +82,7 @@ public static class ManagePlayersMenu
         foreach (var menuOptionData in options)
         {
             var menuName = menuOptionData.Name;
-            menu?.AddMenuOption(menuName, (_, _) => { menuOptionData.Action.Invoke(); }, menuOptionData.Disabled);
+            menu?.AddItem(menuName, (_, _) => { menuOptionData.Action.Invoke(); }, menuOptionData.Disabled ? DisableOption.DisableShowNumber : DisableOption.None);
         }
 
         if (menu != null) AdminMenu.OpenMenu(admin, menu);
@@ -103,7 +105,7 @@ public static class ManagePlayersMenu
         foreach (var menuOptionData in options)
         {
             var menuName = menuOptionData.Name;
-            menu?.AddMenuOption(menuName, (_, _) => { menuOptionData.Action.Invoke(); }, menuOptionData.Disabled);
+            menu?.AddItem(menuName, (_, _) => { menuOptionData.Action.Invoke(); }, menuOptionData.Disabled ? DisableOption.DisableShowNumber : DisableOption.None);
         }
 
         if (menu != null) AdminMenu.OpenMenu(admin, menu);
@@ -162,7 +164,7 @@ public static class ManagePlayersMenu
                 if (player is { IsValid: true })
                     Ban(admin, player, duration, reason);
 
-                CS2_SimpleAdmin.MenuApi?.CloseMenu(admin);
+                MenuManager.CloseActiveMenu(admin);
             });
     }
 
@@ -310,7 +312,7 @@ public static class ManagePlayersMenu
         foreach (var menuOptionData in options)
         {
             var menuName = menuOptionData.Name;
-            menu?.AddMenuOption(menuName, (_, _) => { menuOptionData.Action.Invoke(); }, menuOptionData.Disabled);
+            menu?.AddItem(menuName, (_, _) => { menuOptionData.Action.Invoke(); }, menuOptionData.Disabled ? DisableOption.DisableShowNumber : DisableOption.None);
         }
 
         if (menu != null) AdminMenu.OpenMenu(admin, menu);
@@ -320,6 +322,7 @@ public static class ManagePlayersMenu
     {
         if (player is not { IsValid: true }) return;
 
+        // Allow admins to force their own team
         CS2_SimpleAdmin.ChangeTeam(admin, player, teamName, teamNum, true);
     }
 }

@@ -5,10 +5,10 @@ using CounterStrikeSharp.API.Modules.Entities;
 
 namespace CS2_SimpleAdmin.Menus;
 
-public class MenuManager
+public class AdminMenuRegistry
 {
-    private static MenuManager? _instance;
-    public static MenuManager Instance => _instance ??= new MenuManager();
+    private static AdminMenuRegistry? _instance;
+    public static AdminMenuRegistry Instance => _instance ??= new AdminMenuRegistry();
 
     private readonly Dictionary<string, Func<CCSPlayerController, MenuBuilder>> _menuFactories = [];
     private readonly Dictionary<string, MenuCategory> _menuCategories = [];

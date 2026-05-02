@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Admin;
+using CS2MenuManager.API.Enum;
 using System.Web;
 
 namespace CS2_SimpleAdmin.Menus;
@@ -34,21 +35,29 @@ public static class PlayersMenu
 
         foreach (var player in players)
         {
-            var playerName = player != null && player.PlayerName.Length > 26 ? player.PlayerName[..26] : player?.PlayerName;
+            // GetValidPlayersWithBots already filters invalid/disconnected players
+            var playerName = player.PlayerName.Length > 26 ? player.PlayerName[..26] : player.PlayerName;
 
             var optionName = HttpUtility.HtmlEncode(playerName);
-            if (player != null && enableFilter != null && !enableFilter(player))
+            if (enableFilter != null && !enableFilter(player))
                 continue;
 
-            var enabled = admin.CanTarget(player);
+            // For ForceTeam and similar commands, allow targeting self
+            // CanTarget will be false for self, but we still want to show the option
+            var canTarget = admin.CanTarget(player);
+            var isSelf = player.Slot == admin.Slot;
+            
+            // Enable the option if admin can target the player OR if it's the admin themselves
+            var enabled = canTarget || isSelf;
+            
             var capturedPlayer = player; // Capture in local variable to avoid closure issues
 
             if (optionName != null)
-                menu?.AddMenuOption(optionName, (controller, option) =>
+                menu?.AddItem(optionName, (controller, option) =>
                     {
                         if (capturedPlayer != null) onSelectAction.Invoke(admin, capturedPlayer);
                     },
-                    !enabled);
+                    !enabled ? DisableOption.DisableShowNumber : DisableOption.None);
         }
 
         if (menu != null) AdminMenu.OpenMenu(admin, menu);

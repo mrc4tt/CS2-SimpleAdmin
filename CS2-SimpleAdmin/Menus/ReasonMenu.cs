@@ -23,7 +23,7 @@ public static class ReasonMenu
 
         foreach (var reason in reasons)
         {
-            menu?.AddMenuOption(reason, (_, _) => onSelectAction(admin, player, reason));
+            menu?.AddItem(reason, (_, _) => onSelectAction(admin, player, reason));
         }
 
         if (menu != null) AdminMenu.OpenMenu(admin, menu);
@@ -44,7 +44,7 @@ public static class ReasonMenu
 
         foreach (var reason in reasons)
         {
-            menu?.AddMenuOption(reason, (_, _) => onSelectAction(admin, player, reason));
+            menu?.AddItem(reason, (_, _) => onSelectAction(admin, player, reason));
         }
         
         if (menu != null) AdminMenu.OpenMenu(admin, menu);

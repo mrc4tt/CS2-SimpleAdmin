@@ -36,9 +36,9 @@
 
 **Ensure all the following dependencies are installed before proceeding**
 - [CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp)  
-- [PlayerSettings](https://github.com/NickFox007/PlayerSettingsCS2) - Required by MenuManagerCS2
+- [PlayerSettings](https://github.com/NickFox007/PlayerSettingsCS2) - Required by CS2MenuManager
 - [AnyBaseLibCS2](https://github.com/NickFox007/AnyBaseLibCS2) - Required by PlayerSettings
-- [MenuManagerCS2](https://github.com/NickFox007/MenuManagerCS2)
+- [CS2MenuManager](https://github.com/schwarper/CS2MenuManager) - Drop-in CS2 menu API used by the plugin
 - MySQL database / SQLite
 
 ---
