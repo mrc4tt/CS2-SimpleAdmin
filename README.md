@@ -1,14 +1,13 @@
 <p align="center">
-  <a href="https://github.com/daffyyyy/CS2-SimpleAdmin/actions/workflows/build.yml">
-    <img src="https://github.com/daffyyyy/CS2-SimpleAdmin/actions/workflows/build.yml/badge.svg" alt="Build and Publish" />
+  <a href="https://git.miksen.me/mikkel/CS2-SimpleAdmin/actions">
+    <img src="https://git.miksen.me/mikkel/CS2-SimpleAdmin/actions/workflows/build.yml/badge.svg" alt="Build and Publish" />
   </a>
-<a href="https://github.com/daffyyyy/CS2-SimpleAdmin/releases/latest">
-  <img src="https://img.shields.io/github/v/release/daffyyyy/CS2-SimpleAdmin?color=orange" alt="GitHub Release" />
-</a>
+  <a href="https://git.miksen.me/mikkel/CS2-SimpleAdmin/releases/latest">
+    <img src="https://img.shields.io/gitea/v/release/mikkel/CS2-SimpleAdmin?gitea_url=https%3A%2F%2Fgit.miksen.me&color=orange&label=release" alt="Latest Release" />
+  </a>
   <img src="https://img.shields.io/badge/Made_with-a_lot_of_tea_%F0%9F%8D%B5-red" alt="Made with a lot of tea 🍵" />
 </p>
 
-[![Join the support Discord](https://img.shields.io/badge/Discord-Support-blue?logo=discord&logoColor=white)](https://discord.com/channels/1160907911501991946/1180627186865156126)
 # CS2-SimpleAdmin
 
 ---
@@ -84,13 +83,6 @@ The configuration file (`CS2-SimpleAdmin.json`) will be auto-generated after the
 
 ---
 
-## 📚 Documentation & Support
-
-Access full documentation, guides, tutorials, and developer API references here:  
-[CS2-SimpleAdmin Wiki](https://cs2-simpleadmin.daffyy.dev)
-
----
-
 ## 🛠️ Development
 
 This project started as a base for other plugins but has grown into a standalone admin management tool. Contributions are welcome! If you'd like to help with development or have ideas for new features, feel free to submit a pull request or open an issue.
@@ -100,7 +92,7 @@ This project started as a base for other plugins but has grown into a standalone
 ## 🤝 Contributing & Feedback
 
 Help improve CS2-SimpleAdmin by:
-- Reporting bugs or requesting features on GitHub
+- Reporting bugs or requesting features on [Forgejo](https://git.miksen.me/mikkel/CS2-SimpleAdmin/issues)
 - Submitting pull requests with improvements
 - Participating in discussions and sharing ideas
 
@@ -109,13 +101,6 @@ Help improve CS2-SimpleAdmin by:
 ## 💡 Credits
 
 This project is inspired by the work of [Hackmastr](https://github.com/Hackmastr/css-basic-admin/). Thanks for laying the groundwork!
-
----
-
-## ☕ Support Development
-
-If you find CS2-SimpleAdmin useful, consider supporting the ongoing development:  
-[![Buy me a coffee](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Y8Y4THKXG)
 
 ---
 
