@@ -23,13 +23,12 @@ env:
   OUTPUT_PATH: "./counterstrikesharp"
   TMP_PATH: "./tmp"
 
-  # Pinned third-party plugin versions bundled into the release zip.
-  # When bumping any of these, update both the version and (if needed) the
-  # asset URL in the "Bundle runtime dependencies" step below.
-  # Note: schwarper's GitHub release tag/asset uses just the patch number
-  # (e.g. "v42") even though the NuGet package version is "1.0.42".
-  # Keep the csproj NuGet version in sync with this value when bumping.
-  CS2MENUMANAGER_RELEASE: "v42"
+  # Bundled third-party plugins.
+  # CS2MenuManager: tracks the latest GitHub release dynamically (asset name
+  #   varies per release, so a fixed pin is brittle). The NuGet `<PackageReference>`
+  #   in csproj is independent — bump it when schwarper releases an API-breaking
+  #   version, otherwise leave it.
+  # PlayerSettings / AnyBaseLib: pinned to a specific tag for reproducibility.
   PLAYERSETTINGS_VERSION: "0.9.4"
   ANYBASELIB_VERSION: "0.9.4"
 
@@ -43,6 +42,7 @@ jobs:
       # `container.force_pull: false` in the runner's config.yaml.
     outputs:
       build_version: ${{ steps.get_version.outputs.VERSION }}
+      cs2mm_tag: ${{ steps.bundle.outputs.cs2mm_tag }}
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
 
@@ -77,9 +77,44 @@ jobs:
           cp -r ${{ env.TMP_PATH }}/${{ env.PROJECT_NAME_CS2_SIMPLEADMINAPI }}/* ${{ env.OUTPUT_PATH }}/shared/CS2-SimpleAdminApi/
 
       - name: Bundle runtime dependencies
+        id: bundle
         shell: bash
         run: |
           set -euo pipefail
+
+          # Resolve a GitHub release into (tag, first .zip asset URL) without jq
+          # so we don't need extra packages in the cs2-build image.
+          fetch_latest_release_info() {
+            local repo="$1"        # e.g. "schwarper/CS2MenuManager"
+            local out_tag_var="$2" # name of caller-side variable to set with tag
+            local out_url_var="$3" # name of caller-side variable to set with asset URL
+            local api_url="https://api.github.com/repos/$repo/releases/latest"
+
+            echo ">> Fetching latest release info for $repo"
+            local json
+            json=$(curl --fail --silent --show-error --location --retry 3 "$api_url")
+
+            local tag
+            tag=$(printf '%s' "$json" \
+              | grep -oE '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"' \
+              | head -1 \
+              | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+
+            local zip_url
+            zip_url=$(printf '%s' "$json" \
+              | grep -oE '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]+\.zip"' \
+              | head -1 \
+              | sed -E 's/.*"browser_download_url"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+
+            if [ -z "$tag" ] || [ -z "$zip_url" ]; then
+              echo "!! Could not parse latest release for $repo" >&2
+              echo "$json" | head -40 >&2
+              exit 1
+            fi
+
+            printf -v "$out_tag_var" '%s' "$tag"
+            printf -v "$out_url_var" '%s' "$zip_url"
+          }
 
           # Robust extractor: handles three common zip layouts —
           #   a) addons/counterstrikesharp/...   (server-relative)
@@ -109,10 +144,12 @@ jobs:
             rm -rf "$tmpdir"
           }
 
-          bundle "CS2MenuManager ${CS2MENUMANAGER_RELEASE}" \
-            "https://github.com/schwarper/CS2MenuManager/releases/download/${CS2MENUMANAGER_RELEASE}/CS2MenuManager-${CS2MENUMANAGER_RELEASE}.zip" \
-            "CS2MenuManager_MenuManager"
+          # CS2MenuManager — track latest GitHub release dynamically.
+          fetch_latest_release_info "schwarper/CS2MenuManager" CS2MM_TAG CS2MM_URL
+          bundle "CS2MenuManager ${CS2MM_TAG}" "$CS2MM_URL" "CS2MenuManager_MenuManager"
+          echo "cs2mm_tag=${CS2MM_TAG}" >> "$GITHUB_OUTPUT"
 
+          # PlayerSettings / AnyBaseLib — pinned to specific tags.
           bundle "PlayerSettings v${PLAYERSETTINGS_VERSION}" \
             "https://github.com/NickFox007/PlayerSettingsCS2/releases/download/${PLAYERSETTINGS_VERSION}/PlayerSettings.zip" \
             "PlayerSettings"
@@ -186,7 +223,7 @@ jobs:
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           release-notes: |
             Bundled third-party plugins (drop-in install — no separate downloads):
-              • CS2MenuManager ${{ env.CS2MENUMANAGER_RELEASE }}
+              • CS2MenuManager ${{ needs.build.outputs.cs2mm_tag }} (latest at build time)
               • PlayerSettings v${{ env.PLAYERSETTINGS_VERSION }}
               • AnyBaseLib v${{ env.ANYBASELIB_VERSION }}
 
