@@ -74,6 +74,7 @@ jobs:
           cp -r ${{ env.TMP_PATH }}/${{ env.PROJECT_NAME_CS2_SIMPLEADMINAPI }}/* ${{ env.OUTPUT_PATH }}/shared/CS2-SimpleAdminApi/
 
       - name: Bundle runtime dependencies
+        shell: bash
         run: |
           set -euo pipefail
 
