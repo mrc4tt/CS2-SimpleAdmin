@@ -25,21 +25,19 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: docker
+    container:
+      image: cs2-build:latest
+      # cs2-build:latest is built and cached locally on the Runner host;
+      # this stops Forgejo Runner from trying to pull it from a registry.
+      options: --pull=never
     outputs:
       build_version: ${{ steps.get_version.outputs.VERSION }}
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
 
-      # Build tools (zip / unzip / tar) are expected to be installed on the
-      # Forgejo Runner host. Install once on the VPS:
-      #   sudo apt install -y zip unzip tar
-      # Re-installing them per run wastes ~10s and depends on apt mirror health.
-
-      - name: Setup .NET
-        uses: https://github.com/actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
+      # The cs2-build image already contains: dotnet 8 SDK, zip, unzip, tar, git.
+      # No "Install build tools" or "Setup .NET" step needed.
 
       - name: Get Version
         id: get_version
@@ -104,7 +102,10 @@ jobs:
   publish:
     needs: build
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: docker
+    container:
+      image: cs2-build:latest
+      options: --pull=never
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
 
