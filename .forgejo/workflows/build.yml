@@ -121,8 +121,10 @@ jobs:
           url: ${{ github.server_url }}
           repo: ${{ github.repository }}
           tag: build-${{ needs.build.outputs.build_version }}
+          sha: ${{ github.sha }}
           title: CS2-SimpleAdmin-${{ needs.build.outputs.build_version }}
           release-dir: release
+          override: true
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           release-notes: |
             Place the files in your server as follows:
