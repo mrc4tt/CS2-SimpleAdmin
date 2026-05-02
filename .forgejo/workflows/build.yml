@@ -31,10 +31,10 @@ jobs:
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
 
-      - name: Install build tools
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends zip unzip tar
+      # Build tools (zip / unzip / tar) are expected to be installed on the
+      # Forgejo Runner host. Install once on the VPS:
+      #   sudo apt install -y zip unzip tar
+      # Re-installing them per run wastes ~10s and depends on apt mirror health.
 
       - name: Setup .NET
         uses: https://github.com/actions/setup-dotnet@v4

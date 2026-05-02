@@ -213,6 +213,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         return;
     }
 
+        Task.Run(() => DatabaseProvider.InitializeAsync()).GetAwaiter().GetResult();
         Task.Run(() => DatabaseProvider.DatabaseMigrationAsync());
         
         if (!Directory.Exists(ModuleDirectory + "/data"))
@@ -260,9 +261,21 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         CacheManager = null;
         PlayersTimer?.Kill();
         PlayersTimer = null;
-        
+
         UnregisterEvents();
-        
+
+        if (DatabaseProvider != null)
+        {
+            try
+            {
+                Task.Run(() => DatabaseProvider.ShutdownAsync()).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "DatabaseProvider.ShutdownAsync failed");
+            }
+        }
+
         if (hotReload)
             PlayersInfo.Clear();
         else

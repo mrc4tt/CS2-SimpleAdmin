@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CS2_SimpleAdmin.Database;
 
-public class Migration(string migrationsPath)
+public class Migration(string migrationsPath, bool isSqlite)
 {
     /// <summary>
     /// Executes all migration scripts found in the configured migrations path that have not been applied yet.
@@ -19,7 +19,7 @@ public class Migration(string migrationsPath)
         await using var connection = await CS2_SimpleAdmin.DatabaseProvider.CreateConnectionAsync();
         await using (var cmd = connection.CreateCommand())
         {
-            if (migrationsPath.Contains("sqlite", StringComparison.CurrentCultureIgnoreCase))
+            if (isSqlite)
             {
                 cmd.CommandText = """
                                                   CREATE TABLE IF NOT EXISTS sa_migrations (

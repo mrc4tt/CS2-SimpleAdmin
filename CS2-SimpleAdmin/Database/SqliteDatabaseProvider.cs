@@ -1,17 +1,64 @@
 using System.Data.Common;
 using System.Data.SQLite;
+using Microsoft.Extensions.Logging;
 
 namespace CS2_SimpleAdmin.Database;
 
 public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
 {
-    private readonly string _connectionString = $"Data Source={filePath}";
+    private readonly string _filePath = filePath;
+    private readonly string _connectionString =
+        $"Data Source={filePath};Pooling=True;Cache=Shared;Foreign Keys=True;BusyTimeout=5000";
+
+    public bool IsSqlite => true;
 
     public async Task<DbConnection> CreateConnectionAsync()
     {
         var conn = new SQLiteConnection(_connectionString);
         await conn.OpenAsync();
+
+        // journal_mode=WAL is persistent on disk and applied once via InitializeAsync.
+        // The remaining pragmas are per-connection and cheap enough to set on every open.
+        await using var pragma = conn.CreateCommand();
+        pragma.CommandText = """
+                             PRAGMA synchronous=NORMAL;
+                             PRAGMA temp_store=MEMORY;
+                             PRAGMA mmap_size=67108864;
+                             PRAGMA foreign_keys=ON;
+                             """;
+        await pragma.ExecuteNonQueryAsync();
+
         return conn;
+    }
+
+    public async Task InitializeAsync()
+    {
+        try
+        {
+            await using var conn = await CreateConnectionAsync();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "PRAGMA journal_mode=WAL;";
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch (Exception ex)
+        {
+            CS2_SimpleAdmin._logger?.LogWarning(ex, "Failed to enable SQLite WAL mode");
+        }
+    }
+
+    public async Task ShutdownAsync()
+    {
+        try
+        {
+            await using var conn = await CreateConnectionAsync();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch (Exception ex)
+        {
+            CS2_SimpleAdmin._logger?.LogWarning(ex, "Failed to checkpoint SQLite WAL on shutdown");
+        }
     }
 
     public async Task<(bool Success, string? Exception)> CheckConnectionAsync()
@@ -32,8 +79,35 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
 
     public Task DatabaseMigrationAsync()
     {
-        var migration = new Migration(CS2_SimpleAdmin.Instance.ModuleDirectory + "/Database/Migrations/Sqlite");
+        var migration = new Migration(CS2_SimpleAdmin.Instance.ModuleDirectory + "/Database/Migrations/Sqlite", IsSqlite);
         return migration.ExecuteMigrationsAsync();
+    }
+
+    public async Task<(bool Success, string? Error)> BackupAsync(string destinationPath)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(destinationPath);
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
+
+            await using var conn = await CreateConnectionAsync();
+
+            await using (var checkpoint = conn.CreateCommand())
+            {
+                checkpoint.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+                await checkpoint.ExecuteNonQueryAsync();
+            }
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"VACUUM INTO '{destinationPath.Replace("'", "''")}'";
+            await cmd.ExecuteNonQueryAsync();
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
     }
 
     public string GetBanSelectQuery(bool multiServer) =>
@@ -377,4 +451,9 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
         multiServer
             ? "UPDATE sa_warns SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND duration > 0 AND ends <= @CurrentTime"
             : "UPDATE sa_warns SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND duration > 0 AND ends <= @CurrentTime AND server_id = @serverid";
+
+    public string GetUnwarnAllQuery(bool multiServer) =>
+        multiServer
+            ? "UPDATE sa_warns SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND player_steamid = @steamid"
+            : "UPDATE sa_warns SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND player_steamid = @steamid AND server_id = @serverid";
 }

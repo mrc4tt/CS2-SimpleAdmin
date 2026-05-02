@@ -184,6 +184,25 @@ internal class WarnManager(IDatabaseProvider? databaseProvider)
     }
 
     /// <summary>
+    /// Expires every active warn for a given SteamID.
+    /// </summary>
+    public async Task UnwarnAllPlayer(string steamId)
+    {
+        if (databaseProvider == null) return;
+
+        try
+        {
+            await using var connection = await databaseProvider.CreateConnectionAsync();
+            var sql = databaseProvider.GetUnwarnAllQuery(CS2_SimpleAdmin.Instance.Config.MultiServerMode);
+            await connection.ExecuteAsync(sql, new { steamid = steamId, serverid = CS2_SimpleAdmin.ServerId });
+        }
+        catch (Exception ex)
+        {
+            CS2_SimpleAdmin._logger?.LogCritical("Unable to remove all warns {exception}", ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Expires old warnings based on the current time, removing or marking them as inactive.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>

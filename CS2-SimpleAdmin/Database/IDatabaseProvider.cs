@@ -4,9 +4,18 @@ namespace CS2_SimpleAdmin.Database;
 
 public interface IDatabaseProvider
 {
+    bool IsSqlite { get; }
+
     Task<DbConnection> CreateConnectionAsync();
     Task<(bool Success, string? Exception)> CheckConnectionAsync();
     Task DatabaseMigrationAsync();
+    Task<(bool Success, string? Error)> BackupAsync(string destinationPath);
+
+    /// <summary>One-time setup at plugin start (e.g. SQLite persistent pragmas).</summary>
+    Task InitializeAsync();
+
+    /// <summary>Final-cleanup hook on plugin unload (e.g. SQLite WAL checkpoint).</summary>
+    Task ShutdownAsync();
     
     // CacheManager
     string GetBanSelectQuery(bool multiServer);
@@ -60,5 +69,6 @@ public interface IDatabaseProvider
     string GetPlayerWarnsCountQuery(bool multiServer, bool active);
     string GetUnwarnByIdQuery(bool multiServer);
     string GetUnwarnLastQuery(bool multiServer);
+    string GetUnwarnAllQuery(bool multiServer);
     string GetExpireWarnsQuery(bool multiServer);
 }

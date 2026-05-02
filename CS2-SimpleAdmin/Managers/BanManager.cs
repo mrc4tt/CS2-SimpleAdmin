@@ -99,11 +99,11 @@ internal class BanManager(IDatabaseProvider? databaseProvider)
     /// <param name="issuer">The admin issuing the ban. Can be null if issued from console.</param>
     /// <param name="reason">The reason for the ban.</param>
     /// <param name="time">Ban duration in minutes. If 0, the ban is permanent.</param>
-    public async Task AddBanByIp(string playerIp, PlayerInfo? issuer, string reason, int time = 0)
+    public async Task<int?> AddBanByIp(string playerIp, PlayerInfo? issuer, string reason, int time = 0)
     {
-        if (databaseProvider == null) return;
+        if (databaseProvider == null) return null;
 
-        if (string.IsNullOrEmpty(playerIp)) return;
+        if (string.IsNullOrEmpty(playerIp)) return null;
 
         DateTime now = Time.ActualDateTime();
         DateTime futureTime = now.AddMinutes(time);
@@ -111,9 +111,10 @@ internal class BanManager(IDatabaseProvider? databaseProvider)
         try
         {
             await using var connection = await databaseProvider.CreateConnectionAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
 
             var sql = databaseProvider.GetAddBanByIpQuery();
-            await connection.ExecuteAsync(sql, new
+            var banId = await connection.ExecuteScalarAsync<int?>(sql, new
             {
                 playerIp,
                 adminSteamid = issuer?.SteamId.SteamId64 ?? 0,
@@ -123,9 +124,16 @@ internal class BanManager(IDatabaseProvider? databaseProvider)
                 ends = futureTime,
                 created = now,
                 serverid = CS2_SimpleAdmin.ServerId
-            });
+            }, transaction);
+
+            await transaction.CommitAsync();
+            return banId;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            CS2_SimpleAdmin._logger?.LogError(ex, ex.Message);
+            return null;
+        }
     }
 
 //     public async Task<bool> IsPlayerBanned(PlayerInfo player)
@@ -340,7 +348,10 @@ public async Task UnbanPlayer(string playerPattern, string adminSteamId, string 
             await connection.ExecuteAsync(sqlUpdateBan, new { unbanId, banId });
         }
     }
-    catch { }
+    catch (Exception ex)
+    {
+        CS2_SimpleAdmin._logger?.LogError(ex, "Unable to unban player with pattern {pattern}", playerPattern);
+    }
 }
 
     // public async Task CheckOnlinePlayers(List<(string? IpAddress, ulong SteamID, int? UserId, int Slot)> players)

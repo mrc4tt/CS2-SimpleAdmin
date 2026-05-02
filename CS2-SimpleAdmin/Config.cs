@@ -299,6 +299,9 @@ public class DatabaseConfig
     [JsonPropertyName("SqliteFilePath")]
     public string SqliteFilePath { get; set; } = "cs2-simpleadmin.sqlite";
 
+    [JsonPropertyName("SqliteBackupRetainCount")]
+    public int SqliteBackupRetainCount { get; set; } = 14;
+
     [JsonPropertyName("DatabaseHost")]
     public string DatabaseHost { get; set; } = "";
 

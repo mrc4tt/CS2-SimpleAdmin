@@ -274,7 +274,7 @@ internal class MuteManager(IDatabaseProvider? databaseProvider)
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            CS2_SimpleAdmin._logger?.LogError(ex, "Unable to unmute player with pattern {pattern}", playerPattern);
         }
     }
 

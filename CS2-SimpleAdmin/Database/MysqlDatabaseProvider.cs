@@ -5,6 +5,15 @@ namespace CS2_SimpleAdmin.Database;
 
 public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
 {
+    public bool IsSqlite => false;
+
+    public Task<(bool Success, string? Error)> BackupAsync(string destinationPath) =>
+        Task.FromResult<(bool Success, string? Error)>((false, "BackupAsync is not supported for MySQL; use mysqldump."));
+
+    public Task InitializeAsync() => Task.CompletedTask;
+
+    public Task ShutdownAsync() => Task.CompletedTask;
+
     public async Task<DbConnection> CreateConnectionAsync()
     {
         var connection = new MySqlConnection(connectionString);
@@ -36,7 +45,7 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
     
     public Task DatabaseMigrationAsync()
     {
-        var migration = new Migration(CS2_SimpleAdmin.Instance.ModuleDirectory + "/Database/Migrations/Mysql");
+        var migration = new Migration(CS2_SimpleAdmin.Instance.ModuleDirectory + "/Database/Migrations/Mysql", IsSqlite);
         return migration.ExecuteMigrationsAsync();
     }
 
@@ -207,10 +216,11 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
     public string GetAddBanByIpQuery()
     {
         return """
-                   INSERT INTO `sa_bans` 
-                       (`player_ip`, `admin_steamid`, `admin_name`, `reason`, `duration`, `ends`, `created`, `server_id`) 
-                   VALUES 
+                   INSERT INTO `sa_bans`
+                       (`player_ip`, `admin_steamid`, `admin_name`, `reason`, `duration`, `ends`, `created`, `server_id`)
+                   VALUES
                        (@playerIp, @adminSteamid, @adminName, @banReason, @duration, @ends, @created, @serverid);
+                   SELECT LAST_INSERT_ID();
                """;
     }
     
@@ -403,6 +413,11 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
         multiServer
             ? "UPDATE sa_warns SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND `duration` > 0 AND ends <= @CurrentTime"
             : "UPDATE sa_warns SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND `duration` > 0 AND ends <= @CurrentTime AND server_id = @serverid";
+
+    public string GetUnwarnAllQuery(bool multiServer) =>
+        multiServer
+            ? "UPDATE sa_warns SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND player_steamid = @steamid"
+            : "UPDATE sa_warns SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND player_steamid = @steamid AND server_id = @serverid";
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

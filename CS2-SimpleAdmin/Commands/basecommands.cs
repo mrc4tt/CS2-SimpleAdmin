@@ -11,6 +11,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using CS2_SimpleAdmin.Managers;
 using CS2_SimpleAdmin.Menus;
 using CS2_SimpleAdminApi;
+using Dapper;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Reflection;
@@ -489,6 +490,212 @@ public partial class CS2_SimpleAdmin
 
         _ = Instance.CacheManager?.ForceReInitializeCacheAsync();
         command.ReplyToCommand("Reloaded bans");
+    }
+
+    /// <summary>
+    /// Lifts every active ban, gag/mute/silence and warn for one player in a single sweep,
+    /// inside one DB transaction. Reports the per-category count back to the caller and
+    /// invalidates in-memory penalty state for any matching online player.
+    /// Bans accept steamid / name / IP; mutes accept steamid / name; warns are SteamID-only.
+    /// </summary>
+    [CommandHelper(minArgs: 1, usage: "<steamid> [reason]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    [RequiresPermissions("@css/root")]
+    public void OnClearAllCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        if (DatabaseProvider == null) return;
+
+        var pattern = command.GetArg(1);
+        if (pattern.Length <= 1)
+        {
+            command.ReplyToCommand("Too short pattern to search.");
+            return;
+        }
+
+        var callerSteamId = caller?.SteamID.ToString() ?? _localizer?["sa_console"] ?? "Console";
+        var callerLabel = caller?.PlayerName ?? _localizer?["sa_console"] ?? "Console";
+        var reason = command.ArgCount >= 2
+            ? string.Join(" ", Enumerable.Range(2, command.ArgCount - 2).Select(command.GetArg)).Trim()
+            : _localizer?["sa_unknown"] ?? "Unknown";
+        reason = string.IsNullOrWhiteSpace(reason) ? _localizer?["sa_unknown"] ?? "Unknown" : reason;
+
+        Helper.LogCommand(caller, command);
+
+        Task.Run(async () =>
+        {
+            var bans = 0;
+            var gags = 0;
+            var mutes = 0;
+            var silences = 0;
+            var warns = 0;
+            string? error = null;
+
+            try
+            {
+                await using var connection = await DatabaseProvider.CreateConnectionAsync();
+                await using var tx = await connection.BeginTransactionAsync();
+
+                var multiServer = Config.MultiServerMode;
+
+                // Bans
+                var banIds = (await connection.QueryAsync<int>(
+                    DatabaseProvider.GetUnbanRetrieveBansQuery(multiServer),
+                    new { pattern, serverid = ServerId },
+                    tx)).ToList();
+                if (banIds.Count > 0)
+                {
+                    var banAdminId = await connection.ExecuteScalarAsync<int?>(
+                        DatabaseProvider.GetUnbanAdminIdQuery(),
+                        new { adminSteamId = callerSteamId },
+                        tx) ?? 0;
+                    var insertUnban = DatabaseProvider.GetInsertUnbanQuery(true);
+                    var updateBan = DatabaseProvider.GetUpdateBanStatusQuery();
+                    foreach (var banId in banIds)
+                    {
+                        var unbanId = await connection.ExecuteScalarAsync<int>(
+                            insertUnban, new { banId, adminId = banAdminId, reason }, tx);
+                        await connection.ExecuteAsync(updateBan, new { unbanId, banId }, tx);
+                        bans++;
+                    }
+                }
+
+                // Mutes (GAG / MUTE / SILENCE)
+                var muteAdminId = await connection.ExecuteScalarAsync<int?>(
+                    DatabaseProvider.GetUnmuteAdminIdQuery(),
+                    new { adminSteamId = callerSteamId },
+                    tx) ?? 0;
+                var insertUnmute = DatabaseProvider.GetInsertUnmuteQuery(true);
+                var updateMute = DatabaseProvider.GetUpdateMuteStatusQuery();
+                var retrieveMutes = DatabaseProvider.GetRetrieveMutesQuery(multiServer);
+
+                async Task<int> ClearMutesOfType(string muteType)
+                {
+                    var ids = (await connection.QueryAsync<int>(
+                        retrieveMutes, new { pattern, muteType, serverid = ServerId }, tx)).ToList();
+                    foreach (var muteId in ids)
+                    {
+                        var unmuteId = await connection.ExecuteScalarAsync<int>(
+                            insertUnmute, new { muteId, adminId = muteAdminId, reason }, tx);
+                        await connection.ExecuteAsync(updateMute, new { unmuteId, muteId }, tx);
+                    }
+                    return ids.Count;
+                }
+
+                gags = await ClearMutesOfType("GAG");
+                mutes = await ClearMutesOfType("MUTE");
+                silences = await ClearMutesOfType("SILENCE");
+
+                // Warns (SteamID only — schema has no name/IP index on sa_warns)
+                warns = await connection.ExecuteAsync(
+                    DatabaseProvider.GetUnwarnAllQuery(multiServer),
+                    new { steamid = pattern, serverid = ServerId },
+                    tx);
+
+                await tx.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                _logger?.LogError(ex, "css_clearall failed for pattern {pattern}", pattern);
+            }
+
+            // Invalidate live state on the game thread
+            if (error == null)
+            {
+                ulong.TryParse(pattern, out var steamIdNum);
+                await Server.NextWorldUpdateAsync(() =>
+                {
+                    foreach (var p in Utilities.GetPlayers()
+                                 .Where(p => p is { IsValid: true, IsBot: false, IsHLTV: false }))
+                    {
+                        var match = steamIdNum != 0
+                            ? p.SteamID == steamIdNum
+                            : p.PlayerName.Contains(pattern, StringComparison.OrdinalIgnoreCase);
+                        if (match)
+                            PlayerPenaltyManager.RemoveAllPenalties(p.Slot);
+                    }
+                });
+
+                if (bans > 0)
+                    _ = Instance.CacheManager?.ForceReInitializeCacheAsync();
+            }
+
+            await Server.NextWorldUpdateAsync(() =>
+            {
+                if (error != null)
+                    command.ReplyToCommand($"clearall failed for {pattern}: {error}");
+                else
+                    command.ReplyToCommand(
+                        $"Cleared for {pattern} — bans:{bans} gags:{gags} mutes:{mutes} silences:{silences} warns:{warns}.");
+            });
+
+            if (error == null && DiscordWebhookClientLog != null
+                && (bans + gags + mutes + silences + warns) > 0)
+            {
+                _ = DiscordWebhookClientLog.SendMessageAsync(
+                    $"**[clearall]** by `{callerLabel}` ({callerSteamId}) on `{pattern}` — " +
+                    $"bans:{bans}, gags:{gags}, mutes:{mutes}, silences:{silences}, warns:{warns}. Reason: {reason}");
+            }
+        });
+    }
+
+    /// <summary>
+    /// Backs up the SQLite database to a timestamped file under {ModuleDirectory}/backups
+    /// using <c>VACUUM INTO</c>, then prunes older backups beyond
+    /// <c>SqliteBackupRetainCount</c>. Refuses on non-SQLite providers.
+    /// </summary>
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    [RequiresPermissions("@css/root")]
+    public void OnSqlBackupCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        if (DatabaseProvider == null) return;
+
+        if (!DatabaseProvider.IsSqlite)
+        {
+            command.ReplyToCommand("Backup is only supported for SQLite databases. Use mysqldump for MySQL.");
+            return;
+        }
+
+        var backupDir = Path.Combine(ModuleDirectory, "backups");
+        var fileName = $"cs2-simpleadmin-{DateTime.UtcNow:yyyyMMdd-HHmmss}.sqlite";
+        var destination = Path.Combine(backupDir, fileName);
+        var retain = Math.Max(1, Config.DatabaseConfig.SqliteBackupRetainCount);
+
+        Task.Run(async () =>
+        {
+            var (success, error) = await DatabaseProvider.BackupAsync(destination);
+            var pruned = 0;
+
+            if (success)
+            {
+                try
+                {
+                    var stale = Directory.EnumerateFiles(backupDir, "cs2-simpleadmin-*.sqlite")
+                        .OrderByDescending(p => p, StringComparer.Ordinal) // timestamps sort lexically
+                        .Skip(retain)
+                        .ToList();
+                    foreach (var path in stale)
+                    {
+                        File.Delete(path);
+                        pruned++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Backup retention prune failed");
+                }
+            }
+
+            await Server.NextWorldUpdateAsync(() =>
+            {
+                if (success)
+                    command.ReplyToCommand(
+                        pruned > 0
+                            ? $"Backup written to {destination} (pruned {pruned} old backups, keeping {retain})"
+                            : $"Backup written to {destination}");
+                else
+                    command.ReplyToCommand($"Backup failed: {error}");
+            });
+        });
     }
 
     /// <summary>

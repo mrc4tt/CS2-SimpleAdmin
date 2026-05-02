@@ -21,7 +21,7 @@
 ## 🚀 Features
 
 - 🎮 **Simple, Intuitive Commands:** Manage players, teams, bans, and server settings using an easy command system.
-- 🗄 **Full Database Integration:** Reliable MySQL backend with optional experimental SQLite support for persistent data storage.
+- 🗄 **Full Database Integration:** Reliable MySQL backend with first-class SQLite support (WAL-mode, busy-timeout, in-game `css_sqlbackup` via `VACUUM INTO`) for persistent data storage.
 - ⚡ **Efficient and Lightweight:** Designed to minimize server resource usage while maintaining robust functionality.
 - 🚨 **Real-time Notifications:** Instant in-game and Discord notifications to keep admins and players informed.
 - 🎛 **User-Friendly Admin Interface:** Plugin menus for quick and efficient management without complex commands.
@@ -64,6 +64,23 @@
 ## 📁 Configuration
 
 The configuration file (`CS2-SimpleAdmin.json`) will be auto-generated after the first launch. It contains settings for MySQL connections, command permissions, and other plugin-specific configurations.
+
+---
+
+## 🗄 Choosing a database
+
+| Scenario | Recommended | Why |
+| --- | --- | --- |
+| Single-server, small/medium community | **SQLite** | Zero ops, file-based, WAL gives near-MySQL throughput for one server. Pairs well with `css_sqlbackup`. |
+| Multiple servers sharing one ban list | **MySQL** | SQLite is local to one machine; cross-server sync requires a real network DB. |
+| > ~100k bans/mutes/warns combined | **MySQL** | Hot data still fits SQLite, but operational tooling (replication, point-in-time recovery, dashboards) is much easier on MySQL. |
+| Hosted/shared box where you cannot run MySQL | **SQLite** | The `.sqlite` file lives next to the plugin — no extra service to maintain. |
+
+### SQLite operational notes
+
+- The plugin opens the database in WAL mode. Alongside `cs2-simpleadmin.sqlite` you'll see two sidecar files: `cs2-simpleadmin.sqlite-wal` and `cs2-simpleadmin.sqlite-shm`. **Copy/move all three together** when relocating the database, or run `css_sqlbackup` first (see below) and copy the resulting consolidated file.
+- `css_sqlbackup` (root only) writes a timestamped consistent copy to `addons/counterstrikesharp/plugins/CS2-SimpleAdmin/backups/` via `VACUUM INTO`, then prunes older backups beyond the `SqliteBackupRetainCount` config value (default 14). Safe to run while players are online.
+- For MySQL, use `mysqldump` — `css_sqlbackup` will refuse and tell you so.
 
 ---
 
