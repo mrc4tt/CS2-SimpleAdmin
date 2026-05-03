@@ -884,7 +884,7 @@ internal static class Helper
                 WriteIndented = true,
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             });
-            
+
             File.WriteAllText(CfgPath, updatedJsonContent);
         }
     }
