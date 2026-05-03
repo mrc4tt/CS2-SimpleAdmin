@@ -329,28 +329,46 @@ public partial class CS2_SimpleAdmin
     }
 
     /// <summary>
-    /// Handles unbanning players by pattern (steamid, name, or IP).
+    /// Handles unbanning players by pattern (steamid, name, IP) or by ban id (#N from css_banlist).
     /// </summary>
     /// <param name="caller">The player issuing the unban command.</param>
     /// <param name="command">Command containing target pattern and optional reason.</param>
     [RequiresPermissions("@css/unban")]
-    [CommandHelper(minArgs: 1, usage: "<steamid or name or ip> [reason]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    [CommandHelper(minArgs: 1, usage: "<#id | steamid | name | ip> [reason]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnUnbanCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (DatabaseProvider == null) return;
         var callerSteamId = caller?.SteamID.ToString() ?? _localizer?["sa_console"] ?? "Console";
-        if (command.GetArg(1).Length <= 1)
-        {
-            command.ReplyToCommand($"Too short pattern to search.");
-            return;
-        }
 
         var pattern = command.GetArg(1);
         var reason = command.ArgCount >= 2
             ? string.Join(" ", Enumerable.Range(2, command.ArgCount - 2).Select(command.GetArg)).Trim()
             : _localizer?["sa_unknown"] ?? "Unknown";
-        
         reason = string.IsNullOrWhiteSpace(reason) ? _localizer?["sa_unknown"] ?? "Unknown" : reason;
+
+        // #N → unban by ban id (from css_banlist)
+        if (pattern.StartsWith("#") && long.TryParse(pattern.AsSpan(1), out var banId))
+        {
+            Helper.LogCommand(caller, command);
+            Task.Run(async () =>
+            {
+                var ok = await BanManager.UnbanById(banId, callerSteamId, reason);
+                await Server.NextWorldUpdateAsync(() =>
+                {
+                    command.ReplyToCommand(ok
+                        ? $"Unbanned ban #{banId}."
+                        : $"No active ban with id #{banId}.");
+                });
+            });
+            return;
+        }
+
+        if (pattern.Length <= 1)
+        {
+            command.ReplyToCommand("Too short pattern to search.");
+            return;
+        }
+
         Task.Run(async () => await BanManager.UnbanPlayer(pattern, callerSteamId, reason));
         Helper.LogCommand(caller, command);
         command.ReplyToCommand($"Unbanned player with pattern {pattern}.");

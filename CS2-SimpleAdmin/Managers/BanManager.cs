@@ -316,7 +316,42 @@ internal class BanManager(IDatabaseProvider? databaseProvider)
     /// <param name="playerPattern">Pattern to match against player identifiers (e.g., partial SteamID).</param>
     /// <param name="adminSteamId">SteamID64 of the admin performing the unban.</param>
     /// <param name="reason">Optional reason for the unban. If null or empty, the unban reason is not stored.</param>
-public async Task UnbanPlayer(string playerPattern, string adminSteamId, string reason)
+/// <summary>
+    /// Unbans a single ban row by its primary key id, recording the audit row in sa_unbans.
+    /// Returns true if a row matched and was flipped to UNBANNED, false otherwise.
+    /// </summary>
+    public async Task<bool> UnbanById(long banId, string adminSteamId, string reason)
+    {
+        if (databaseProvider == null) return false;
+
+        try
+        {
+            await using var connection = await databaseProvider.CreateConnectionAsync();
+
+            var exists = await connection.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM sa_bans WHERE id = @banId AND status = 'ACTIVE'",
+                new { banId });
+            if (exists == 0) return false;
+
+            var sqlAdmin = databaseProvider.GetUnbanAdminIdQuery();
+            var adminId = await connection.ExecuteScalarAsync<int?>(sqlAdmin, new { adminSteamId }) ?? 0;
+
+            var sqlInsertUnban = databaseProvider.GetInsertUnbanQuery(true);
+            var unbanId = await connection.ExecuteScalarAsync<int>(sqlInsertUnban, new { banId, adminId, reason });
+
+            var sqlUpdateBan = databaseProvider.GetUpdateBanStatusQuery();
+            await connection.ExecuteAsync(sqlUpdateBan, new { unbanId, banId });
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CS2_SimpleAdmin._logger?.LogError(ex, "Unable to unban by id #{banId}", banId);
+            return false;
+        }
+    }
+
+    public async Task UnbanPlayer(string playerPattern, string adminSteamId, string reason)
 {
     if (databaseProvider == null) return;
 
@@ -339,7 +374,7 @@ public async Task UnbanPlayer(string playerPattern, string adminSteamId, string 
 
         foreach (var ban in bansList)
         {
-            int banId = ban.id;
+            long banId = (long)ban.id;
 
             var sqlInsertUnban = databaseProvider.GetInsertUnbanQuery(reason != null);
             var unbanId = await connection.ExecuteScalarAsync<int>(sqlInsertUnban, new { banId, adminId, reason });

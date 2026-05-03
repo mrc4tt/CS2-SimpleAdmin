@@ -254,11 +254,18 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
         UnregisterEvents();
 
-        if (DatabaseProvider != null)
+        // Only checkpoint WAL on a real unload (server shutting down), not on
+        // css_plugins restart — blocking the game thread for a SQLite operation
+        // during a reload trips the server watchdog and can crash the game.
+        // On full unload we still time-bound the wait so a slow checkpoint
+        // can't hang server shutdown indefinitely.
+        if (!hotReload && DatabaseProvider != null)
         {
             try
             {
-                Task.Run(() => DatabaseProvider.ShutdownAsync()).GetAwaiter().GetResult();
+                var task = Task.Run(() => DatabaseProvider.ShutdownAsync());
+                if (!task.Wait(TimeSpan.FromSeconds(2)))
+                    _logger?.LogWarning("DatabaseProvider.ShutdownAsync timed out after 2s; skipping");
             }
             catch (Exception ex)
             {

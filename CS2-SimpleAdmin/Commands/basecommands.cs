@@ -495,6 +495,151 @@ public partial class CS2_SimpleAdmin
     }
 
     /// <summary>
+    /// Lists active bans (steamid / name / IP) from the database — always fresh,
+    /// not from the in-memory cache (which only refreshes on player connect or
+    /// css_reloadbans). Optional pattern filters by substring match on any
+    /// field. Output is capped at 50 to avoid flooding the console.
+    /// </summary>
+    [CommandHelper(usage: "[pattern]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    [RequiresPermissions("@css/ban")]
+    public void OnBanlistCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        if (DatabaseProvider == null) return;
+
+        var pattern = command.ArgCount >= 2 ? command.GetArg(1) : null;
+        var multiServer = Config.MultiServerMode;
+
+        Task.Run(async () =>
+        {
+            var bans = new List<BanlistEntry>();
+            string? error = null;
+            try
+            {
+                await using var connection = await DatabaseProvider.CreateConnectionAsync();
+                var sql = multiServer
+                    ? "SELECT id, player_name, player_steamid, player_ip, created FROM sa_bans " +
+                      "WHERE status = 'ACTIVE' AND (duration = 0 OR ends > @now) " +
+                      "ORDER BY created DESC LIMIT 200"
+                    : "SELECT id, player_name, player_steamid, player_ip, created FROM sa_bans " +
+                      "WHERE status = 'ACTIVE' AND (duration = 0 OR ends > @now) AND server_id = @serverid " +
+                      "ORDER BY created DESC LIMIT 200";
+
+                var rows = await connection.QueryAsync(sql, new { now = Time.ActualDateTime(), serverid = ServerId });
+
+                foreach (var rowObj in rows)
+                {
+                    var row = (IDictionary<string, object?>)rowObj!;
+                    var idVal = row["id"];
+                    var nameVal = row["player_name"];
+                    var steamVal = row["player_steamid"];
+                    var ipVal = row["player_ip"];
+                    var createdVal = row["created"];
+
+                    bans.Add(new BanlistEntry
+                    {
+                        Id = idVal is null ? 0L : Convert.ToInt64(idVal),
+                        PlayerName = nameVal as string ?? "",
+                        PlayerSteamId = steamVal is null ? "" : (Convert.ToString(steamVal) ?? ""),
+                        PlayerIp = ipVal as string ?? "",
+                        Created = ParseDbDateTime(createdVal)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                _logger?.LogError(ex, "css_banlist query failed");
+            }
+
+            if (error != null)
+            {
+                await Server.NextWorldUpdateAsync(() => command.ReplyToCommand($"banlist failed: {error}"));
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(pattern))
+            {
+                var filtered = new List<BanlistEntry>();
+                foreach (var b in bans)
+                {
+                    if (b.PlayerSteamId.Contains(pattern, StringComparison.OrdinalIgnoreCase)
+                        || b.PlayerName.Contains(pattern, StringComparison.OrdinalIgnoreCase)
+                        || b.PlayerIp.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                    {
+                        filtered.Add(b);
+                    }
+                }
+                bans = filtered;
+            }
+
+            var total = bans.Count;
+            const int limit = 50;
+            var shown = Math.Min(total, limit);
+
+            await Server.NextWorldUpdateAsync(() =>
+            {
+                if (total == 0)
+                {
+                    command.ReplyToCommand(string.IsNullOrEmpty(pattern)
+                        ? "No active bans."
+                        : $"No active bans matching \"{pattern}\".");
+                    return;
+                }
+
+                command.ReplyToCommand(
+                    string.IsNullOrEmpty(pattern)
+                        ? $"Active bans: {total} total, showing {shown} most recent."
+                        : $"Active bans matching \"{pattern}\": {total} total, showing {shown} most recent.");
+
+                var max = Math.Min(bans.Count, limit);
+                for (var i = 0; i < max; i++)
+                {
+                    var b = bans[i];
+                    var steamId = string.IsNullOrEmpty(b.PlayerSteamId) ? "-" : b.PlayerSteamId;
+                    var name = string.IsNullOrEmpty(b.PlayerName) ? "-" : b.PlayerName;
+                    var ip = string.IsNullOrEmpty(b.PlayerIp) ? "-" : b.PlayerIp;
+                    var when = b.Created.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+                    command.ReplyToCommand($"  #{b.Id}  {when}  {steamId,-17}  {name,-26}  {ip}");
+                }
+
+                if (total > limit)
+                    command.ReplyToCommand($"  ... ({total - limit} more not shown — narrow with `css_banlist <pattern>`)");
+            });
+        });
+    }
+
+    private sealed class BanlistEntry
+    {
+        public long Id;
+        public string PlayerName = "";
+        public string PlayerSteamId = "";
+        public string PlayerIp = "";
+        public DateTime Created;
+    }
+
+    /// <summary>
+    /// Defensively converts a value coming back from Dapper into a DateTime.
+    /// System.Data.SQLite's built-in parser stumbles on the round-trip ISO 8601
+    /// format with 7-digit fractional seconds and a trailing "Z" that the
+    /// driver itself writes when binding a UTC DateTime, so we handle the
+    /// string fallback ourselves.
+    /// </summary>
+    private static DateTime ParseDbDateTime(object? value)
+    {
+        if (value is null) return DateTime.MinValue;
+        if (value is DateTime dt) return dt;
+        if (value is string s && DateTime.TryParse(
+                s,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var parsed))
+        {
+            return parsed;
+        }
+        return DateTime.MinValue;
+    }
+
+    /// <summary>
     /// Lifts every active ban, gag/mute/silence and warn for one player in a single sweep,
     /// inside one DB transaction. Reports the per-category count back to the caller and
     /// invalidates in-memory penalty state for any matching online player.

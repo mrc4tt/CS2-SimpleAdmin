@@ -40,6 +40,7 @@ public static class RegisterCommands
         new("css_delgroup", CS2_SimpleAdmin.Instance.OnDelGroupCommand),
         new("css_reloadadmins", CS2_SimpleAdmin.Instance.OnRelAdminCommand),
         new("css_reloadbans", CS2_SimpleAdmin.Instance.OnRelBans),
+        new("css_banlist", CS2_SimpleAdmin.Instance.OnBanlistCommand),
         new("css_sqlbackup", CS2_SimpleAdmin.Instance.OnSqlBackupCommand),
         new("css_clearall", CS2_SimpleAdmin.Instance.OnClearAllCommand),
         new("css_hide", CS2_SimpleAdmin.Instance.OnHideCommand),
@@ -127,6 +128,7 @@ public static class RegisterCommands
                 { "css_delgroup", new Command { Aliases = ["css_delgroup"] } },
                 { "css_reloadadmins", new Command { Aliases = ["css_reloadadmins"] } },
                 { "css_reloadbans", new Command { Aliases = ["css_reloadbans"] } },
+                { "css_banlist", new Command { Aliases = ["css_banlist", "css_bans"] } },
                 { "css_sqlbackup", new Command { Aliases = ["css_sqlbackup"] } },
                 { "css_clearall", new Command { Aliases = ["css_clearall", "css_clearpenalties"] } },
                 { "css_hide", new Command { Aliases = ["css_hide", "css_stealth"] } },
@@ -182,25 +184,53 @@ public static class RegisterCommands
     private static void Register()
     {
         var json = File.ReadAllText(CommandsPath);
-        var commandsConfig = JsonSerializer.Deserialize<CommandsConfig>(json, 
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var commandsConfig = JsonSerializer.Deserialize<CommandsConfig>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            ?? new CommandsConfig();
 
-        if (commandsConfig?.Commands != null)
+        commandsConfig.Commands ??= new Dictionary<string, Command>();
+
+        // Self-heal: any new entries in CommandMappings that aren't yet in
+        // the user's existing Commands.json get added with their key as the
+        // default alias, and the file is written back so the user can later
+        // customize the aliases.
+        var added = false;
+        foreach (var mapping in CommandMappings)
         {
-            foreach (var command in commandsConfig.Commands)
+            if (commandsConfig.Commands.ContainsKey(mapping.CommandKey)) continue;
+
+            commandsConfig.Commands[mapping.CommandKey] = new Command
             {
-                if (command.Value.Aliases == null) continue;
-            
-                var mapping = CommandMappings.FirstOrDefault(m => m.CommandKey == command.Key);
-                if (mapping == null || command.Value.Aliases.Length == 0) continue;
-            
-                foreach (var alias in command.Value.Aliases)
-                {
-                    CS2_SimpleAdmin.Instance.AddCommand(alias, "", mapping.Callback);
-                }
+                Aliases = [mapping.CommandKey]
+            };
+            CS2_SimpleAdmin._logger?.LogInformation(
+                $"Adding new command `{mapping.CommandKey}` to Commands.json");
+            added = true;
+        }
+
+        if (added)
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+            File.WriteAllText(CommandsPath, JsonSerializer.Serialize(commandsConfig, options));
+        }
+
+        foreach (var command in commandsConfig.Commands)
+        {
+            if (command.Value.Aliases == null) continue;
+
+            var mapping = CommandMappings.FirstOrDefault(m => m.CommandKey == command.Key);
+            if (mapping == null || command.Value.Aliases.Length == 0) continue;
+
+            foreach (var alias in command.Value.Aliases)
+            {
+                CS2_SimpleAdmin.Instance.AddCommand(alias, "", mapping.Callback);
             }
         }
-        
+
         foreach (var (name, definitions) in _commandDefinitions)
         {
             foreach (var definition in definitions)
@@ -215,7 +245,7 @@ public static class RegisterCommands
     /// </summary>
     private class CommandsConfig
     {
-        public Dictionary<string, Command>? Commands { get; init; }
+        public Dictionary<string, Command>? Commands { get; set; }
     }
     
     /// <summary>
