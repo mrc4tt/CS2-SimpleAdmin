@@ -72,44 +72,69 @@ internal class CacheManager: IDisposable
 
             if (CS2_SimpleAdmin.Instance.Config.OtherSettings.CheckMultiAccountsByIp)
             {
-                // Optimization: Load IP history and build cache in single pass
-                var ipHistory = await connection.QueryAsync<(ulong steamid, string? name, uint address, DateTime used_at)>(
+                // Read as raw rows and convert defensively — `address` historically
+                // could be VARCHAR or INTEGER depending on which migration the DB
+                // first ran, and any out-of-range value would crash Dapper's typed
+                // tuple deserializer with OverflowException.
+                var rows = await connection.QueryAsync(
                     "SELECT steamid, name, address, used_at FROM sa_players_ips ORDER BY steamid, address, used_at DESC");
 
                 var unknownName = CS2_SimpleAdmin._localizer?["sa_unknown"] ?? "Unknown";
                 var currentSteamId = 0UL;
                 var currentIpSet = new HashSet<IpRecord>(new IpRecordComparer());
                 var latestIpTimestamps = new Dictionary<uint, DateTime>();
+                var skipped = 0;
 
-                foreach (var record in ipHistory)
+                foreach (var rowObj in rows)
                 {
+                    var row = (IDictionary<string, object?>)rowObj!;
+
+                    if (!TryToUInt64(row["steamid"], out var steamid))
+                    {
+                        skipped++;
+                        continue;
+                    }
+                    if (!TryToUInt32(row["address"], out var address))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    var name = row["name"] as string;
+                    var usedAt = row["used_at"] is DateTime dt ? dt : DateTime.MinValue;
+
                     // When we encounter a new steamid, save the previous one
-                    if (record.steamid != currentSteamId && currentSteamId != 0)
+                    if (steamid != currentSteamId && currentSteamId != 0)
                     {
                         _playerIpsCache[currentSteamId] = currentIpSet;
                         currentIpSet = new HashSet<IpRecord>(new IpRecordComparer());
                         latestIpTimestamps.Clear();
                     }
 
-                    currentSteamId = record.steamid;
+                    currentSteamId = steamid;
 
-                    // Only keep the latest timestamp for each IP
-                    if (!latestIpTimestamps.TryGetValue(record.address, out var existingTimestamp) ||
-                        record.used_at > existingTimestamp)
+                    if (!latestIpTimestamps.TryGetValue(address, out var existingTimestamp) ||
+                        usedAt > existingTimestamp)
                     {
-                        latestIpTimestamps[record.address] = record.used_at;
+                        latestIpTimestamps[address] = usedAt;
                         currentIpSet.Add(new IpRecord(
-                            record.address,
-                            record.used_at,
-                            string.IsNullOrEmpty(record.name) ? unknownName : record.name
+                            address,
+                            usedAt,
+                            string.IsNullOrEmpty(name) ? unknownName : name
                         ));
                     }
                 }
 
-                // Don't forget the last steamid
                 if (currentSteamId != 0)
                 {
                     _playerIpsCache[currentSteamId] = currentIpSet;
+                }
+
+                if (skipped > 0)
+                {
+                    CS2_SimpleAdmin._logger?.LogWarning(
+                        "Skipped {count} sa_players_ips rows with malformed steamid/address values",
+                        skipped);
                 }
             }
 
@@ -819,6 +844,68 @@ internal class CacheManager: IDisposable
         if (_disposed) return;
         Clear();
         _disposed = true;
+    }
+
+    /// <summary>
+    /// Best-effort conversion from a SQLite-returned cell value (long, int,
+    /// string, or boxed numeric) to ulong without throwing. Returns false on
+    /// out-of-range / unparseable input so callers can skip the row.
+    /// </summary>
+    private static bool TryToUInt64(object? value, out ulong result)
+    {
+        result = 0;
+        if (value is null) return false;
+        try
+        {
+            result = value switch
+            {
+                ulong u => u,
+                long l when l >= 0 => (ulong)l,
+                long l => unchecked((ulong)l),  // preserve bit pattern for 64-bit ids
+                int i when i >= 0 => (ulong)i,
+                string s => ulong.Parse(s, System.Globalization.CultureInfo.InvariantCulture),
+                _ => Convert.ToUInt64(value, System.Globalization.CultureInfo.InvariantCulture)
+            };
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Best-effort conversion to uint32 without throwing — used for the
+    /// historically wobbly sa_players_ips.address column whose values may be
+    /// stored as TEXT or INTEGER depending on the migration the DB ran first.
+    /// Out-of-range or non-numeric inputs return false instead of crashing the
+    /// whole cache load with OverflowException.
+    /// </summary>
+    private static bool TryToUInt32(object? value, out uint result)
+    {
+        result = 0;
+        if (value is null) return false;
+        try
+        {
+            switch (value)
+            {
+                case uint u: result = u; return true;
+                case int i when i >= 0: result = (uint)i; return true;
+                case long l when l >= 0 && l <= uint.MaxValue: result = (uint)l; return true;
+                case string s when uint.TryParse(s, System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture, out var parsed):
+                    result = parsed; return true;
+                default:
+                    var asLong = Convert.ToInt64(value, System.Globalization.CultureInfo.InvariantCulture);
+                    if (asLong < 0 || asLong > uint.MaxValue) return false;
+                    result = (uint)asLong;
+                    return true;
+            }
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
 
