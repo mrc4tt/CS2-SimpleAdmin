@@ -1,0 +1,4 @@
+-- Intentionally empty for SQLite.
+-- The MySQL counterpart of this migration reorders columns in sa_admins,
+-- which SQLite cannot do (no ALTER TABLE ... CHANGE COLUMN). Column order
+-- doesn't matter for queries, so this is a no-op on SQLite.

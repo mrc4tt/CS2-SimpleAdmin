@@ -58,6 +58,17 @@ public class Migration(string migrationsPath, bool isSqlite)
             try
             {
                 var sqlScript = await File.ReadAllTextAsync(file);
+
+                if (string.IsNullOrWhiteSpace(sqlScript))
+                {
+                    // Empty migration file (intentional placeholder, e.g. SQLite
+                    // version of a MySQL-only schema change). Record as applied
+                    // so it isn't retried forever, but skip execution.
+                    await UpdateLastAppliedVersionAsync(connection, version);
+                    CS2_SimpleAdmin._logger?.LogInformation($"Migration \"{version}\" is empty; recorded as applied (no-op).");
+                    continue;
+                }
+
                 await using (var cmdMigration = connection.CreateCommand())
                 {
                     cmdMigration.CommandText = sqlScript;
