@@ -204,7 +204,17 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
     }
 
         Task.Run(() => DatabaseProvider.InitializeAsync()).GetAwaiter().GetResult();
-        Task.Run(() => DatabaseProvider.DatabaseMigrationAsync());
+        // Block on migrations so timers/events on plugin start don't fire
+        // (ExpireOldWarns, SavePlayerIp etc.) before tables exist. Fire-and-forget
+        // hid migration exceptions in unobserved tasks.
+        try
+        {
+            Task.Run(() => DatabaseProvider.DatabaseMigrationAsync()).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "DatabaseMigrationAsync failed");
+        }
         
         if (!Directory.Exists(ModuleDirectory + "/data"))
         {
