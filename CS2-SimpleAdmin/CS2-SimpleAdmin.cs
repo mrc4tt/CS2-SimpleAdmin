@@ -19,7 +19,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 {
     internal static CS2_SimpleAdmin Instance { get; private set; } = new();
 
-    public override string ModuleName => "CS2-SimpleAdmin" + (Helper.IsDebugBuild ? " (DEBUG)" : " (RELEASE)");
+    public override string ModuleName => "CS2-SimpleAdmin";
     public override string ModuleDescription => "Simple admin plugin for Counter-Strike 2 :)";
     public override string ModuleAuthor => "daffyy (Forked by Miksen)";
     public override string ModuleVersion => BuildInfo.Version;

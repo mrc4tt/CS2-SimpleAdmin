@@ -69,8 +69,33 @@ public class Migration(string migrationsPath, bool isSqlite)
                     continue;
                 }
 
-                await using (var cmdMigration = connection.CreateCommand())
+                if (isSqlite)
                 {
+                    // SQLite has no `ALTER TABLE ADD COLUMN IF NOT EXISTS`, so
+                    // re-running a migration that already added a column throws
+                    // "duplicate column name". That blocks ReconcileSchemaAsync
+                    // from making progress when a later migration (e.g. the
+                    // CREATE TABLE for sa_warns in 010) is the actual missing
+                    // piece. Run each statement individually and tolerate the
+                    // duplicate-column case so the rest of the script continues.
+                    foreach (var statement in SplitSqliteStatements(sqlScript))
+                    {
+                        await using var cmdStmt = connection.CreateCommand();
+                        cmdStmt.CommandText = statement;
+                        try
+                        {
+                            await cmdStmt.ExecuteNonQueryAsync();
+                        }
+                        catch (System.Data.SQLite.SQLiteException ex)
+                            when (ex.Message.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Column already added by a prior run of this migration.
+                        }
+                    }
+                }
+                else
+                {
+                    await using var cmdMigration = connection.CreateCommand();
                     cmdMigration.CommandText = sqlScript;
                     await cmdMigration.ExecuteNonQueryAsync();
                 }
@@ -130,6 +155,29 @@ public class Migration(string migrationsPath, bool isSqlite)
 
         var result = await cmd.ExecuteScalarAsync();
         return result != null && Convert.ToInt64(result) > 0;
+    }
+
+    /// <summary>
+    /// Splits a SQLite migration script into individual statements on `;`.
+    /// Naive — assumes no semicolons inside string literals or triggers. That
+    /// holds for every migration currently in /Migrations/Sqlite; if a future
+    /// migration needs embedded semicolons (e.g. CREATE TRIGGER ... BEGIN ... END;),
+    /// switch to a proper tokenizer.
+    /// </summary>
+    private static IEnumerable<string> SplitSqliteStatements(string script)
+    {
+        foreach (var part in script.Split(';'))
+        {
+            var trimmed = part.Trim();
+            if (trimmed.Length == 0) continue;
+            // Strip pure-comment-only chunks so the SQLite engine isn't asked
+            // to parse a statement that's nothing but `-- ...`.
+            var hasCode = trimmed
+                .Split('\n')
+                .Any(line => !string.IsNullOrWhiteSpace(line) && !line.TrimStart().StartsWith("--"));
+            if (!hasCode) continue;
+            yield return trimmed;
+        }
     }
 
     private static async Task<HashSet<string>> GetAppliedVersionsAsync(DbConnection connection)
