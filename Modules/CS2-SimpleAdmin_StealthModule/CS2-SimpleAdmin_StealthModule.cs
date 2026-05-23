@@ -76,7 +76,7 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
         {
             _sharedApi = _pluginCapability.Get();
             if (_sharedApi == null) throw new NullReferenceException("_sharedApi is null");
-            
+
             if (Config.BlockStatusCommand)
                 _sharedApi.OnAdminToggleSilent += OnAdminToggleSilent;
         }
@@ -85,6 +85,21 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
             Logger.LogError("CS2-SimpleAdmin SharedApi not found");
             Unload(false);
         }
+    }
+
+    public override void Unload(bool hotReload)
+    {
+        // Drop CCSPlayerController refs and tear down listeners so plugin
+        // state doesn't survive hot reloads. CheckTransmit listener +
+        // OnAdminToggleSilent event handler would otherwise keep firing
+        // against the unloaded instance and pin the whole plugin graph.
+        RemoveListener<Listeners.CheckTransmit>(OnCheckTransmit);
+
+        if (_sharedApi != null && Config is { BlockStatusCommand: true })
+            _sharedApi.OnAdminToggleSilent -= OnAdminToggleSilent;
+
+        Players.Clear();
+        _sharedApi = null;
     }
 
     private void OnAdminToggleSilent(int slot, bool status)

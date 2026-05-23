@@ -37,6 +37,8 @@ public partial class CS2_SimpleAdmin_FunCommands : BasePlugin, IPluginConfig<Con
 {
     public Config Config { get; set; }
 
+    private CounterStrikeSharp.API.Modules.Timers.Timer? _speedGravityTimer;
+
     /// <summary>
     /// BEST PRACTICE: Cache expensive operations
     /// Weapons enum values don't change, so we cache them on first access
@@ -123,6 +125,16 @@ public partial class CS2_SimpleAdmin_FunCommands : BasePlugin, IPluginConfig<Con
 
     public override void Unload(bool hotReload)
     {
+        // Always kill the repeating speed/gravity timer and drop the per-
+        // player tracking dictionaries even if the shared API never came up,
+        // otherwise hot-reloads stack timers and leak CCSPlayerController refs.
+        _speedGravityTimer?.Kill();
+        _speedGravityTimer = null;
+
+        GodPlayers.Clear();
+        SpeedPlayers.Clear();
+        GravityPlayers.Clear();
+
         if (_sharedApi == null) return;
 
         // Unregister commands
@@ -454,7 +466,8 @@ public partial class CS2_SimpleAdmin_FunCommands : BasePlugin, IPluginConfig<Con
     /// </summary>
     private void StartSpeedGravityTimer()
     {
-        AddTimer(0.12f, () =>
+        _speedGravityTimer?.Kill();
+        _speedGravityTimer = AddTimer(0.12f, () =>
         {
             // Early exit if no players have modified speed or gravity
             var hasSpeedPlayers = SpeedPlayers.Count > 0;

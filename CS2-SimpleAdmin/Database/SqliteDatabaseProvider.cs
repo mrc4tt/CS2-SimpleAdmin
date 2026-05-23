@@ -50,14 +50,33 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
     {
         try
         {
-            await using var conn = await CreateConnectionAsync();
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
-            await cmd.ExecuteNonQueryAsync();
+            await using (var conn = await CreateConnectionAsync())
+            await using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+                await cmd.ExecuteNonQueryAsync();
+            }
         }
         catch (Exception ex)
         {
             CS2_SimpleAdmin._logger?.LogWarning(ex, "Failed to checkpoint SQLite WAL on shutdown");
+        }
+        finally
+        {
+            // Drop pooled connections so their file descriptors close on real
+            // unload. Pooling=True in the connection string otherwise keeps
+            // FDs alive until process exit, and they accumulate across plugin
+            // hot reloads / restarts.
+            try
+            {
+                SQLiteConnection.ClearAllPools();
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+            catch (Exception ex)
+            {
+                CS2_SimpleAdmin._logger?.LogWarning(ex, "Failed to clear SQLite connection pools on shutdown");
+            }
         }
     }
 

@@ -38,12 +38,14 @@ public partial class CS2_SimpleAdmin
     private void UnregisterEvents()
     {
         RemoveListener<Listeners.OnMapStart>(OnMapStart);
-        RemoveListener<Listeners.OnClientConnect>(OnClientConnect);
+        // OnClientConnect is intentionally not registered (see RegisterEvents)
+        // — removing it here too would only register/deregister churn if it
+        // ever gets re-enabled. Keep this list mirroring RegisterEvents.
         RemoveListener<Listeners.OnClientConnected>(OnClientConnected);
         RemoveListener<Listeners.OnGameServerSteamAPIActivated>(OnGameServerSteamAPIActivated);
         if (Config.OtherSettings.UserMessageGagChatType)
             UnhookUserMessage(118, HookUmChat);
-        
+
         RemoveCommandListener(null!, ComamndListenerHandler, HookMode.Pre);
         // AddCommandListener("callvote", OnCommandCallVote);
         // AddCommandListener("say", OnCommandSay);

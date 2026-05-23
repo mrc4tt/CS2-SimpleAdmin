@@ -268,7 +268,9 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         // css_plugins restart — blocking the game thread for a SQLite operation
         // during a reload trips the server watchdog and can crash the game.
         // On full unload we still time-bound the wait so a slow checkpoint
-        // can't hang server shutdown indefinitely.
+        // can't hang server shutdown indefinitely. ShutdownAsync also clears
+        // the SQLite connection pool so pooled FDs close instead of leaking
+        // across css_plugins reload cycles.
         if (!hotReload && DatabaseProvider != null)
         {
             try
@@ -283,9 +285,19 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
             }
         }
 
-        if (hotReload)
-            PlayersInfo.Clear();
-        else
-            Server.ExecuteCommand($"css_plugins unload {ModuleDirectory}");
+        // Static collections live for the AppDomain lifetime, so on a real
+        // unload (or hot reload) we must drop the CCSPlayerController / per-
+        // player state we are holding. Otherwise refs accumulate across
+        // restarts and admins, disconnect history, and per-slot penalty bits
+        // pin objects that would otherwise be collected.
+        PlayersInfo.Clear();
+        CachedPlayers.Clear();
+        BotPlayers.Clear();
+        DisconnectedPlayers.Clear();
+        SilentPlayers.Clear();
+        RenamedPlayers.Clear();
+        AdminDisabledJoinComms.Clear();
+        VoteAnswers.Clear();
+        PlayerPenaltyManager.RemoveAllPenalties();
     }
 }
