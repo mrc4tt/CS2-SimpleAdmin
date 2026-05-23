@@ -28,9 +28,6 @@ env:
   #   varies per release, so a fixed pin is brittle). The NuGet `<PackageReference>`
   #   in csproj is independent — bump it when schwarper releases an API-breaking
   #   version, otherwise leave it.
-  # PlayerSettings / AnyBaseLib: pinned to a specific tag for reproducibility.
-  PLAYERSETTINGS_VERSION: "0.9.4"
-  ANYBASELIB_VERSION: "0.9.4"
 
 jobs:
   build:
@@ -152,15 +149,6 @@ jobs:
           bundle "CS2MenuManager ${CS2MM_TAG}" "$CS2MM_URL" "CS2MenuManager_MenuManager"
           echo "cs2mm_tag=${CS2MM_TAG}" >> "$GITHUB_OUTPUT"
 
-          # PlayerSettings / AnyBaseLib — pinned to specific tags.
-          bundle "PlayerSettings v${PLAYERSETTINGS_VERSION}" \
-            "https://github.com/NickFox007/PlayerSettingsCS2/releases/download/${PLAYERSETTINGS_VERSION}/PlayerSettings.zip" \
-            "PlayerSettings"
-
-          bundle "AnyBaseLib v${ANYBASELIB_VERSION}" \
-            "https://github.com/NickFox007/AnyBaseLibCS2/releases/download/${ANYBASELIB_VERSION}/AnyBaseLib.zip" \
-            "AnyBaseLib"
-
           echo ">> Final bundled tree:"
           find "${{ env.OUTPUT_PATH }}" -maxdepth 4 -type d | sort
 
@@ -227,15 +215,13 @@ jobs:
           release-notes: |
             Bundled third-party plugins (drop-in install — no separate downloads):
               • CS2MenuManager ${{ needs.build.outputs.cs2mm_tag }} (latest at build time)
-              • PlayerSettings v${{ env.PLAYERSETTINGS_VERSION }}
-              • AnyBaseLib v${{ env.ANYBASELIB_VERSION }}
 
             Place the files in your server as follows:
 
             - CS2-SimpleAdmin (everything bundled):
               Place the files inside the addons/counterstrikesharp directory.
-              All required plugins (menu manager, player settings, base lib) are
-              already included — no separate downloads needed.
+              The required menu manager plugin is already included — no separate
+              downloads needed.
               After the first launch, configure the plugin using the JSON config file at:
               addons/counterstrikesharp/configs/plugins/CS2-SimpleAdmin/CS2-SimpleAdmin.json
 

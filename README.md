@@ -38,8 +38,6 @@ CS2-SimpleAdmin is fully self-contained — drop the release zip into
 `addons/counterstrikesharp/` and you're done. The release ships with:
 
 - [CS2MenuManager](https://github.com/schwarper/CS2MenuManager) (bundled — pinned version listed in release notes)
-- [PlayerSettings](https://github.com/NickFox007/PlayerSettingsCS2) (bundled)
-- [AnyBaseLibCS2](https://github.com/NickFox007/AnyBaseLibCS2) (bundled)
 - MySQL **or** SQLite (built-in, see "Choosing a database" below)
 
 ---

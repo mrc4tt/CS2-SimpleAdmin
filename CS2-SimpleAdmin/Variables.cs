@@ -75,6 +75,6 @@ public partial class CS2_SimpleAdmin
     internal Timer? PlayersTimer = null;
     
     // Funny list
-    private readonly List<string> _requiredPlugins = ["CS2MenuManager_MenuManager", "PlayerSettings"];
-    private readonly List<string> _requiredShared = ["PlayerSettingsApi", "AnyBaseLib", "CS2-SimpleAdminApi"];
+    private readonly List<string> _requiredPlugins = ["CS2MenuManager_MenuManager"];
+    private readonly List<string> _requiredShared = ["CS2-SimpleAdminApi"];
 }
