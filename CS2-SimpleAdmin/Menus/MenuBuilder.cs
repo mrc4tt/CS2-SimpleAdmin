@@ -165,7 +165,7 @@ public class MenuBuilder
         var localizedTitle = GetLocalizedTitle();
 
         // Use MenuManager dependency
-        var menu = Helper.CreateMenu(localizedTitle, _backAction);
+        var menu = Helper.CreateMenu(localizedTitle, player, _backAction);
         if (menu == null) return;
 
         foreach (var option in _options)

@@ -908,6 +908,11 @@ internal static class Helper
 
     public static IMenu? CreateMenu(string title, Action<CCSPlayerController>? backAction = null, Action<CCSPlayerController>? resetAction = null)
     {
+        return CreateMenu(title, player: null, backAction, resetAction);
+    }
+
+    public static IMenu? CreateMenu(string title, CCSPlayerController? player, Action<CCSPlayerController>? backAction = null, Action<CCSPlayerController>? resetAction = null)
+    {
         var plugin = CS2_SimpleAdmin.Instance;
         var menuType = CS2_SimpleAdmin.Instance.Config.MenuConfigs.MenuType.ToLower();
         IMenu menu = menuType switch
@@ -916,14 +921,31 @@ internal static class Helper
             "console" => new ConsoleMenu(title, plugin),
             "center" => new CenterHtmlMenu(title, plugin),
             "dynamic" => new WasdMenu(title, plugin),
-            "selectable" => new PlayerMenu(title, plugin),
-            _ => new PlayerMenu(title, plugin)
+            "selectable" => CreateSelectableMenu(title, plugin, player),
+            _ => CreateSelectableMenu(title, plugin, player)
         };
 
         if (backAction != null)
             menu.PrevMenu = new BackActionMenu(title, plugin, backAction);
 
         return menu;
+    }
+
+    private static IMenu CreateSelectableMenu(string title, BasePlugin plugin, CCSPlayerController? player)
+    {
+        // schwarper PlayerMenu falls back to WasdMenu when player has no cookie
+        // (CS2MenuManager Config.DefaultMenuType = "WasdMenu"). WasdMenu freezes the
+        // player and renders via HUD overlay, which is invisible/non-functional for
+        // dead, spectating, or HUD-suppressed players. Force a safe HUD menu when
+        // the resolved type would be WasdMenu so admins can always open !admin.
+        if (player == null || !player.IsValid)
+            return new PlayerMenu(title, plugin);
+
+        var resolved = MenuTypeManager.GetPlayerMenuType(player);
+        if (resolved == typeof(ChatMenu)) return new ChatMenu(title, plugin);
+        if (resolved == typeof(ConsoleMenu)) return new ConsoleMenu(title, plugin);
+        if (resolved == typeof(CenterHtmlMenu)) return new CenterHtmlMenu(title, plugin);
+        return new CenterHtmlMenu(title, plugin);
     }
 
     private sealed class BackActionMenu(string title, BasePlugin plugin, Action<CCSPlayerController> back)

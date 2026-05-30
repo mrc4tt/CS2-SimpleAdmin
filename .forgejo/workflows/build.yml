@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
 
-      # The cs2-build image already contains: dotnet 8 SDK, zip, unzip, tar, git.
+      # The cs2-build image already contains: dotnet 10 SDK, zip, unzip, tar, git.
       # No "Install build tools" or "Setup .NET" step needed.
 
       - name: Get Version
