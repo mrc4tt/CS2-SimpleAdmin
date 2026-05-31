@@ -97,7 +97,7 @@ public partial class CS2_SimpleAdmin_FunCommands
         if (targets == null) return;
 
         var playersToTarget = targets.Players.Where(player =>
-            player is { IsValid: true, IsHLTV: false, Connected: PlayerConnectedState.PlayerConnected }).ToList();
+            player is { IsValid: true, IsHLTV: false, Connected: PlayerConnectedState.Connected }).ToList();
 
         playersToTarget.ForEach(player =>
         {
@@ -245,7 +245,7 @@ public partial class CS2_SimpleAdmin_FunCommands
             if (targets == null) return;
 
             var playersToTarget = targets.Players.Where(player =>
-                player is { IsValid: true, IsHLTV: false, Connected: PlayerConnectedState.PlayerConnected }).ToList();
+                player is { IsValid: true, IsHLTV: false, Connected: PlayerConnectedState.Connected }).ToList();
 
             playersToTarget.ForEach(player =>
             {
