@@ -155,26 +155,10 @@ jobs:
       - name: Zip Main Build Output
         run: zip -r CS2-SimpleAdmin-${{ steps.get_version.outputs.VERSION }}.zip ${{ env.OUTPUT_PATH }}
 
-      - name: Extract & Zip StatusBlocker Linux
-        run: |
-          mkdir -p statusblocker-linux &&
-          tar -xzf Modules/CS2-SimpleAdmin_StealthModule/METAMOD\ PLUGIN/StatusBlocker-v*-linux.tar.gz -C statusblocker-linux &&
-          cd statusblocker-linux &&
-          zip -r ../StatusBlocker-linux-${{ steps.get_version.outputs.VERSION }}.zip ./*
-
-      - name: Extract & Zip StatusBlocker Windows
-        run: |
-          mkdir -p statusblocker-windows &&
-          tar -xzf Modules/CS2-SimpleAdmin_StealthModule/METAMOD\ PLUGIN/StatusBlocker-v*-windows.tar.gz -C statusblocker-windows &&
-          cd statusblocker-windows &&
-          zip -r ../StatusBlocker-windows-${{ steps.get_version.outputs.VERSION }}.zip ./*
-
       - name: Stage release artifacts
         run: |
           mkdir -p release
           cp CS2-SimpleAdmin-${{ steps.get_version.outputs.VERSION }}.zip release/
-          cp StatusBlocker-linux-${{ steps.get_version.outputs.VERSION }}.zip release/
-          cp StatusBlocker-windows-${{ steps.get_version.outputs.VERSION }}.zip release/
 
       - name: Upload all artifacts
         uses: https://code.forgejo.org/forgejo/upload-artifact@v4
@@ -182,8 +166,6 @@ jobs:
           name: CS2-SimpleAdmin-Build-Artifacts
           path: |
             release/CS2-SimpleAdmin-${{ steps.get_version.outputs.VERSION }}.zip
-            release/StatusBlocker-linux-${{ steps.get_version.outputs.VERSION }}.zip
-            release/StatusBlocker-windows-${{ steps.get_version.outputs.VERSION }}.zip
 
   publish:
     needs: build
@@ -224,9 +206,5 @@ jobs:
               downloads needed.
               After the first launch, configure the plugin using the JSON config file at:
               addons/counterstrikesharp/configs/plugins/CS2-SimpleAdmin/CS2-SimpleAdmin.json
-
-            - StatusBlocker:
-              Place the plugin files directly into the addons directory.
-              This plugin is a Metamod module for the StealthModule and does not require a subfolder.
 
             Remember to restart or reload your game server after installing and configuring the plugins.
