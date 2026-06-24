@@ -308,7 +308,7 @@ internal class CacheManager: IDisposable
             
             if (CS2_SimpleAdmin.Instance.Config.OtherSettings.CheckMultiAccountsByIp)
             {
-                var ipHistory = (await connection.QueryAsync<(ulong steamid, string? name, uint address, DateTime used_at)>(
+                var ipHistory = (await connection.QueryAsync<(ulong steamid, string? name, long address, DateTime used_at)>(
                     "SELECT steamid, name, address, used_at FROM sa_players_ips WHERE used_at >= @lastUpdate ORDER BY used_at DESC LIMIT 300",
                     new { lastUpdate = _lastUpdateTime }));
 
@@ -316,7 +316,7 @@ internal class CacheManager: IDisposable
                 {
                     var ipSet = new HashSet<IpRecord>(
                         group
-                            .GroupBy(x => x.address)
+                            .GroupBy(x => (uint)(x.address & 0xFFFFFFFF))
                             .Select(g =>
                             {
                                 var latest = g.MaxBy(x => x.used_at);
