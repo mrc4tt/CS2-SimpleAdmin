@@ -255,7 +255,7 @@ public partial class CS2_SimpleAdmin
             player.DiePosition = null;
         }
 
-        AddTimer(0.41f, () =>
+        AddTimer(0.5f, () =>
         {
             foreach (var list in RenamedPlayers)
             {

@@ -275,6 +275,16 @@ internal class PlayerManager
     /// </remarks>
     public void CheckPlayersTimer()
     {
+        CS2_SimpleAdmin.Instance.AddTimer(5f, () =>
+        {
+            foreach (var (steamid, name) in CS2_SimpleAdmin.RenamedPlayers)
+            {
+                var player = Helper.GetPlayerFromSteamid64(steamid);
+                if (player == null || !player.IsValid || player.PlayerName == name) continue;
+                player.Rename(name);
+            }
+        }, TimerFlags.REPEAT);
+
         CS2_SimpleAdmin.Instance.PlayersTimer = CS2_SimpleAdmin.Instance.AddTimer(61.0f, () =>
         {
 #if DEBUG
