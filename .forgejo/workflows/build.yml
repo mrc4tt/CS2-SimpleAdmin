@@ -24,10 +24,11 @@ env:
   TMP_PATH: "./tmp"
 
   # Bundled third-party plugins.
-  # CS2MenuManager: tracks the latest GitHub release dynamically (asset name
-  #   varies per release, so a fixed pin is brittle). The NuGet `<PackageReference>`
-  #   in csproj is independent — bump it when schwarper releases an API-breaking
-  #   version, otherwise leave it.
+  # CS2MenuManager: tracks the latest Forgejo release dynamically from
+  #   git.miksen.me/mikkel/CS2MenuManager (asset name varies per release, so a
+  #   fixed pin is brittle). The NuGet `<PackageReference>` in csproj resolves
+  #   from the same Forgejo package registry (see nuget.config) — the two are
+  #   independent; bump the PackageReference version when the API changes.
 
 jobs:
   build:
@@ -40,6 +41,9 @@ jobs:
     outputs:
       build_version: ${{ steps.get_version.outputs.VERSION }}
       cs2mm_tag: ${{ steps.bundle.outputs.cs2mm_tag }}
+    # Auth for the "forgejo" NuGet source (CS2MenuManager) in nuget.config.
+    env:
+      NuGetPackageSourceCredentials_forgejo: "Username=${{ secrets.FORGEJO_USER || 'mikkel' }};Password=${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}"
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
 
@@ -76,20 +80,23 @@ jobs:
       - name: Bundle runtime dependencies
         id: bundle
         shell: bash
+        env:
+          FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
-          # Resolve a GitHub release into (tag, first .zip asset URL) without jq
+          # Resolve a Forgejo release into (tag, first .zip asset URL) without jq
           # so we don't need extra packages in the cs2-build image.
           fetch_latest_release_info() {
-            local repo="$1"        # e.g. "schwarper/CS2MenuManager"
+            local repo="$1"        # e.g. "mikkel/CS2MenuManager"
             local out_tag_var="$2" # name of caller-side variable to set with tag
             local out_url_var="$3" # name of caller-side variable to set with asset URL
-            local api_url="https://api.github.com/repos/$repo/releases/latest"
+            local api_url="${GITHUB_SERVER_URL}/api/v1/repos/$repo/releases/latest"
 
             echo ">> Fetching latest release info for $repo"
             local json
-            json=$(curl --fail --silent --show-error --location --retry 3 "$api_url")
+            json=$(curl --fail --silent --show-error --location --retry 3 \
+                   -H "Authorization: token ${FORGEJO_TOKEN}" "$api_url")
 
             local tag
             tag=$(printf '%s' "$json" \
@@ -126,6 +133,7 @@ jobs:
 
             echo ">> Downloading $name from $url"
             curl --fail --silent --show-error --location --retry 3 \
+                 -H "Authorization: token ${FORGEJO_TOKEN}" \
                  --output "$tmpdir/dep.zip" "$url"
             unzip -q "$tmpdir/dep.zip" -d "$tmpdir/extract"
 
@@ -144,8 +152,8 @@ jobs:
             rm -rf "$tmpdir"
           }
 
-          # CS2MenuManager — track latest GitHub release dynamically.
-          fetch_latest_release_info "schwarper/CS2MenuManager" CS2MM_TAG CS2MM_URL
+          # CS2MenuManager — track latest Forgejo release dynamically.
+          fetch_latest_release_info "mikkel/CS2MenuManager" CS2MM_TAG CS2MM_URL
           bundle "CS2MenuManager ${CS2MM_TAG}" "$CS2MM_URL" "CS2MenuManager_MenuManager"
           echo "cs2mm_tag=${CS2MM_TAG}" >> "$GITHUB_OUTPUT"
 
