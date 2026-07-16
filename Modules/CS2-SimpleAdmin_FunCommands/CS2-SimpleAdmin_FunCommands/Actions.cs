@@ -1,6 +1,7 @@
 using System.Globalization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace CS2_SimpleAdmin_FunCommands;
@@ -144,6 +145,12 @@ public partial class CS2_SimpleAdmin_FunCommands
     {
         if (!player.IsValid) return;
         if (!caller.CanTarget(player)) return;
+
+        // Guard: only T/CT can respawn. Calling Respawn() on a spectator/unassigned
+        // player (or one whose pawn handle is dead) crashes the server.
+        if (player.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist)) return;
+        if (player.PlayerPawn?.Value == null || !player.PlayerPawn.IsValid) return;
+        if (player.Connected != PlayerConnectedState.Connected) return;
 
         var callerName = caller?.PlayerName ?? "Console";
 

@@ -2,6 +2,7 @@ using System.Globalization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Translations;
+using CounterStrikeSharp.API.Modules.Utils;
 
 namespace CS2_SimpleAdmin_FunCommands;
 
@@ -99,7 +100,8 @@ public partial class CS2_SimpleAdmin_FunCommands
         return _sharedApi!.CreateMenuWithPlayers(
             context,
             admin,
-            admin.CanTarget,        // Filter: only targetable players (no LifeState check - can respawn dead players)
+            // Filter: T/CT only (spectators can't respawn - crashes server), no LifeState check (can respawn dead players)
+            player => player.Team is CsTeam.Terrorist or CsTeam.CounterTerrorist && admin.CanTarget(player),
             Respawn);               // Use the Respawn method which includes death position teleport
     }
 
