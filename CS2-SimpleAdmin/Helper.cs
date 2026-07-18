@@ -920,7 +920,7 @@ internal static class Helper
             "chat" => new ChatMenu(title, plugin),
             "console" => new ConsoleMenu(title, plugin),
             "center" => new CenterHtmlMenu(title, plugin),
-            "dynamic" => new WasdMenu(title, plugin),
+            "wasdmenu" or "wasd" or "dynamic" => new WasdMenu(title, plugin), // "dynamic" = legacy alias
             "selectable" => CreateSelectableMenu(title, plugin, player),
             _ => CreateSelectableMenu(title, plugin, player)
         };
@@ -933,11 +933,11 @@ internal static class Helper
 
     private static IMenu CreateSelectableMenu(string title, BasePlugin plugin, CCSPlayerController? player)
     {
-        // schwarper PlayerMenu falls back to WasdMenu when player has no cookie
-        // (CS2MenuManager Config.DefaultMenuType = "WasdMenu"). WasdMenu freezes the
-        // player and renders via HUD overlay, which is invisible/non-functional for
-        // dead, spectating, or HUD-suppressed players. Force a safe HUD menu when
-        // the resolved type would be WasdMenu so admins can always open !admin.
+        // Honor the player's per-SteamID menu-type choice (set via css_menutype and
+        // read from the CS2MenuManager cookie). WasdMenu renders via center-HTML and
+        // reads WASD button input, so it works for dead/spectating players too — no
+        // downgrade needed. When no cookie is set, GetPlayerMenuType returns the
+        // CS2MenuManager default (WasdMenu).
         if (player == null || !player.IsValid)
             return new PlayerMenu(title, plugin);
 
@@ -945,6 +945,7 @@ internal static class Helper
         if (resolved == typeof(ChatMenu)) return new ChatMenu(title, plugin);
         if (resolved == typeof(ConsoleMenu)) return new ConsoleMenu(title, plugin);
         if (resolved == typeof(CenterHtmlMenu)) return new CenterHtmlMenu(title, plugin);
+        if (resolved == typeof(WasdMenu)) return new WasdMenu(title, plugin);
         return new CenterHtmlMenu(title, plugin);
     }
 

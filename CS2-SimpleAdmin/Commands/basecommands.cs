@@ -1567,7 +1567,7 @@ public partial class CS2_SimpleAdmin
             return;
         }
 
-        var pluginsMenu = Helper.CreateMenu(Localizer["sa_menu_pluginsmanager_title"]);
+        var pluginsMenu = Helper.CreateMenu(Localizer["sa_menu_pluginsmanager_title"], _ => ManageServerMenu.OpenMenu(caller));
         
         foreach (var plugin in plugins)
         {
@@ -1585,7 +1585,7 @@ public partial class CS2_SimpleAdmin
             
             var status = state?.ToUpper() != "UNLOADED" ? "ON" : "OFF";
             var configMenuType = Config.MenuConfigs.MenuType.ToLower();
-            var rendersHtml = configMenuType is "center" or "dynamic"
+            var rendersHtml = configMenuType is "center" or "wasdmenu" or "wasd" or "dynamic"
                 || (configMenuType == "selectable"
                     && MenuTypeManager.GetPlayerMenuType(caller) is { } t
                     && (t == typeof(CenterHtmlMenu) || t == typeof(WasdMenu)));

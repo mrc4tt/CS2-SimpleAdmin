@@ -119,6 +119,8 @@ public class CustomServerCommandData
 
 public class MenuConfig
 {
+    // Options: "selectable" (per-player choice via css_menutype, defaults to WasdMenu),
+    // "wasdmenu", "center", "chat", "console". ("dynamic"/"wasd" are legacy aliases for wasdmenu.)
     [JsonPropertyName("MenuType")] public string MenuType { get; set; } = "selectable";
 
     [JsonPropertyName("Durations")]

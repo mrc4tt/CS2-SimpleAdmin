@@ -45,10 +45,17 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
                 CachedPlayers.Clear();
                 BotPlayers.Clear();
                 
-                foreach (var player in Utilities.GetPlayers().Where(p => p.IsValid && p is { Connected: PlayerConnectedState.Connected, IsHLTV: false }).ToArray()) 
+                foreach (var player in Utilities.GetPlayers().Where(p => p.IsValid && p is { Connected: PlayerConnectedState.Connected, IsHLTV: false }).ToArray())
                 {
                     if (!player.IsBot)
+                    {
+                        // On hot reload OnClientConnected doesn't re-fire for already-connected
+                        // players, and LoadPlayerData only fills PlayersInfo — so add to
+                        // CachedPlayers here or the player-target menus come up empty.
+                        if (!CachedPlayers.Contains(player))
+                            CachedPlayers.Add(player);
                         PlayerManager.LoadPlayerData(player, true);
+                    }
                     else
                         BotPlayers.Add(player);
                 };
