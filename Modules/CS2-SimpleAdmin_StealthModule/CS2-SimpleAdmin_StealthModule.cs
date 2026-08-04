@@ -118,14 +118,28 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
     //     }
     // }
 
+    // Reused across ticks. The old LINQ chain allocated an anonymous-type instance per player
+    // plus a backing array on EVERY CheckTransmit dispatch — that is once per tick, for the whole
+    // time a silent admin is connected. Only the slot and the pawn index are needed downstream,
+    // so both are cached as value tuples and the list is refilled in place.
+    private readonly List<(int Slot, int PawnIndex)> _hiddenObservers = [];
+
     private void OnCheckTransmit(CCheckTransmitInfoList infolist)
     {
         if (Players.Count <= 2 || _sharedApi is not null && _sharedApi.ListSilentAdminsSlots().Count == 0) return;
-        
-        var validObserverPawns = Players
-            .Select(p => new { p.Slot, ObserverPawn = p.ObserverPawn.Value })
-            .Where(p => p.ObserverPawn?.IsValid == true) // safe check
-            .ToArray();
+
+        _hiddenObservers.Clear();
+        foreach (var p in Players)
+        {
+            if (p is not { IsValid: true }) continue;
+
+            var observerPawn = p.ObserverPawn.Value;
+            if (observerPawn?.IsValid != true) continue; // safe check
+
+            _hiddenObservers.Add((p.Slot, (int)observerPawn.Index));
+        }
+
+        if (_hiddenObservers.Count == 0) return;
 
         foreach (var (info, player) in infolist)
         {
@@ -133,16 +147,17 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
                 continue;
 
             var entities = info.TransmitEntities;
-            foreach (var target in validObserverPawns)
+            int viewerSlot = player.Slot;
+
+            foreach (var (slot, pawnIndex) in _hiddenObservers)
             {
-                if (target.Slot == player.Slot)
+                if (slot == viewerSlot)
                     continue;
 
-                var observer = target.ObserverPawn;
-                if (observer == null) continue; // extra safety
-                
-                if (entities.Contains((int)observer.Index))
-                    entities.Remove((int)observer.Index);
+                // Remove is a bit clear and is idempotent, so the Contains() guard that used to
+                // sit in front of it doubled the work for nothing. This loop is
+                // clients x hidden observers, every tick.
+                entities.Remove(pawnIndex);
             }
         }
     }
