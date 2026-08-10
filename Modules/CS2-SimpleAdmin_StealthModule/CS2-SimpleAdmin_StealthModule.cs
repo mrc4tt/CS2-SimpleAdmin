@@ -4,7 +4,7 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Capabilities;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Entities;
-using CounterStrikeSharp.API.Modules.Utils;
+using CounterStrikeSharp.API.Modules.Timers;
 using CS2_SimpleAdminApi;
 using Microsoft.Extensions.Logging;
 
@@ -13,58 +13,49 @@ namespace CS2_SimpleAdmin_StealthModule;
 public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConfig>
 {
     public override string ModuleName => "[CS2-SimpleAdmin] Stealth Module";
-    public override string ModuleVersion => "v1.0.2";
+    public override string ModuleVersion => "v1.0.3";
     public override string ModuleAuthor => "daffyy";
 
     private static ICS2_SimpleAdminApi? _sharedApi;
     private readonly PluginCapability<ICS2_SimpleAdminApi> _pluginCapability  = new("simpleadmin:api");
-    
-    internal static readonly HashSet<CCSPlayerController> Players = [];
-    // private readonly HashSet<int> _admins = [];
-    // private readonly HashSet<CCSPlayerController> _spectatedPlayers = [];
-    
-    public PluginConfig Config { get; set; }
+
+    // Slots, NOT CCSPlayerController references. A controller wrapper holds a raw
+    // native pointer; the entity behind it is freed on disconnect and on every map
+    // change. Keeping wrappers in a long-lived set meant CheckTransmit dereferenced
+    // freed CCSPlayerController memory every tick after the first map change (nothing
+    // ever cleared the set), which is the "Couldn't resolve offset" spam + SIGSEGV in
+    // libserver.so from issue #291. Slots are plain ints and are re-resolved through
+    // Utilities.GetPlayerFromSlot on use, so a stale entry can only ever yield null.
+    internal static readonly HashSet<int> PlayerSlots = [];
+
+    public PluginConfig Config { get; set; } = new();
 
     public override void Load(bool hotReload)
     {
         RegisterListener<Listeners.CheckTransmit>(OnCheckTransmit);
-        
-        // Old method
-        // if (Config.BlockStatusCommand)
-            // RegisterListener<Listeners.OnServerPostEntityThink>(OnServerPostEntityThink);
+        RegisterListener<Listeners.OnMapStart>(OnMapStart);
 
         if (hotReload)
-        {
-            Players.Clear();
-            var players = Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot).ToList();
-
-            foreach (var player in players)
-            {
-                var steamId = new SteamID(player.SteamID);
-                // if (Config.Permissions.Any(permission => AdminManager.PlayerHasPermissions(steamId, permission)))
-                    // _admins.Add(player.Slot);
-
-                Players.Add(player);
-            }
-        }
-        
-        // Old method
-        // AddTimer(3, RefreshSpectatedPlayers, TimerFlags.REPEAT);
+            RebuildPlayerSlots();
     }
 
-    // Old method
-    // private void RefreshSpectatedPlayers()
-    // {
-    //     _spectatedPlayers.Clear();
-    //
-    //     foreach (var admin in _admins)
-    //     {
-    //         var observer = admin.GetSpectatingPlayer();
-    //         if (observer != null)
-    //             _spectatedPlayers.Add(observer);
-    //     }
-    // }
-    
+    private void OnMapStart(string mapName)
+    {
+        // Every controller from the previous map is gone by now.
+        PlayerSlots.Clear();
+    }
+
+    private static void RebuildPlayerSlots()
+    {
+        PlayerSlots.Clear();
+
+        foreach (var player in Utilities.GetPlayers())
+        {
+            if (player is { IsValid: true, IsBot: false, IsHLTV: false })
+                PlayerSlots.Add(player.Slot);
+        }
+    }
+
     public void OnConfigParsed(PluginConfig config)
     {
         Config = config;
@@ -89,16 +80,16 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
 
     public override void Unload(bool hotReload)
     {
-        // Drop CCSPlayerController refs and tear down listeners so plugin
-        // state doesn't survive hot reloads. CheckTransmit listener +
-        // OnAdminToggleSilent event handler would otherwise keep firing
-        // against the unloaded instance and pin the whole plugin graph.
+        // Tear down listeners so plugin state doesn't survive hot reloads. The
+        // CheckTransmit listener + OnAdminToggleSilent handler would otherwise keep
+        // firing against the unloaded instance and pin the whole plugin graph.
         RemoveListener<Listeners.CheckTransmit>(OnCheckTransmit);
+        RemoveListener<Listeners.OnMapStart>(OnMapStart);
 
         if (_sharedApi != null && Config is { BlockStatusCommand: true })
             _sharedApi.OnAdminToggleSilent -= OnAdminToggleSilent;
 
-        Players.Clear();
+        PlayerSlots.Clear();
         _sharedApi = null;
     }
 
@@ -107,36 +98,31 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
         Server.ExecuteCommand(status ? $"mm_excludeslot {slot}" : $"mm_removeexcludeslot {slot}");
     }
 
-    // Old method
-    // private void OnServerPostEntityThink()
-    // {
-    //     if (Players.Count <= 2 || _sharedApi is not null && _sharedApi.ListSilentAdminsSlots().Count == 0) return;
-    //     foreach (var player in _spectatedPlayers)
-    //     {
-    //         if (player?.IsValid != true || player.IsBot)  continue;
-    //         player.PrintToConsole(" ");
-    //     }
-    // }
-
-    // Reused across ticks. The old LINQ chain allocated an anonymous-type instance per player
-    // plus a backing array on EVERY CheckTransmit dispatch — that is once per tick, for the whole
-    // time a silent admin is connected. Only the slot and the pawn index are needed downstream,
-    // so both are cached as value tuples and the list is refilled in place.
+    // Reused across ticks so the per-tick dispatch doesn't allocate.
     private readonly List<(int Slot, int PawnIndex)> _hiddenObservers = [];
 
     private void OnCheckTransmit(CCheckTransmitInfoList infolist)
     {
-        if (Players.Count <= 2 || _sharedApi is not null && _sharedApi.ListSilentAdminsSlots().Count == 0) return;
+        if (_sharedApi is null || PlayerSlots.Count <= 2) return;
+
+        var silentSlots = _sharedApi.ListSilentAdminsSlots();
+        if (silentSlots.Count == 0) return;
 
         _hiddenObservers.Clear();
-        foreach (var p in Players)
+
+        // Only silent admins get hidden. The old loop walked every tracked player and
+        // stripped their observer pawn from everyone else's transmit set as soon as a
+        // single admin was hidden, which also blanked ordinary spectators.
+        foreach (var slot in silentSlots)
         {
-            if (p is not { IsValid: true }) continue;
+            var player = Utilities.GetPlayerFromSlot(slot);
+            if (player is not { IsValid: true, IsBot: false }) continue;
+            if (player.Connected != PlayerConnectedState.Connected) continue;
 
-            var observerPawn = p.ObserverPawn.Value;
-            if (observerPawn?.IsValid != true) continue; // safe check
+            var observerPawn = player.ObserverPawn.Value;
+            if (observerPawn is not { IsValid: true }) continue;
 
-            _hiddenObservers.Add((p.Slot, (int)observerPawn.Index));
+            _hiddenObservers.Add((slot, (int)observerPawn.Index));
         }
 
         if (_hiddenObservers.Count == 0) return;
@@ -147,16 +133,16 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
                 continue;
 
             var entities = info.TransmitEntities;
-            int viewerSlot = player.Slot;
+            var viewerSlot = player.Slot;
 
             foreach (var (slot, pawnIndex) in _hiddenObservers)
             {
                 if (slot == viewerSlot)
                     continue;
 
-                // Remove is a bit clear and is idempotent, so the Contains() guard that used to
-                // sit in front of it doubled the work for nothing. This loop is
-                // clients x hidden observers, every tick.
+                // Remove is idempotent, so the Contains() guard that used to sit in
+                // front of it doubled the work for nothing. This loop is
+                // clients x hidden admins, every tick.
                 entities.Remove(pawnIndex);
             }
         }
@@ -167,36 +153,44 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
     {
         if (ShouldSuppressBroadcast(@event.Userid))
             info.DontBroadcast = true;
-        
+
         return HookResult.Continue;
     }
-    
+
     [GameEventHandler(HookMode.Pre)]
     public HookResult EventPlayerConnectFull(EventPlayerConnectFull @event, GameEventInfo info)
     {
         var player = @event.Userid;
         if (player?.IsValid != true || player.IsBot) return HookResult.Continue;
-        
-        Players.Add(player);
-        
+
+        PlayerSlots.Add(player.Slot);
+
         var steamId = new SteamID(player.SteamID);
         if (!Config.Permissions.Any(permission => AdminManager.PlayerHasPermissions(steamId, permission)))
             return HookResult.Continue;
-        
-        // _admins.Add(player.Slot);
 
         if (!Config.HideAdminsOnJoin) return HookResult.Continue;
-        
-        AddTimer(0.75f, () =>
+
+        // Capture slot + SteamID, never the controller: the admin can drop before the
+        // timer fires, and by then the wrapper points at freed memory.
+        var slot = player.Slot;
+        var steamId64 = player.SteamID;
+
+        AddTimer(1.0f, () =>
         {
-            player.ChangeTeam(CsTeam.Spectator);
-        });
-        
-        AddTimer(1.25f, () =>
-        {
-            player.ExecuteClientCommandFromServer("css_hide");
-        });
-        
+            var target = Utilities.GetPlayerFromSlot(slot);
+            if (target is not { IsValid: true, IsBot: false }) return;
+            if (target.SteamID != steamId64) return;
+            if (target.Connected != PlayerConnectedState.Connected) return;
+            if (_sharedApi?.IsAdminSilent(target) == true) return;
+
+            // css_hide owns the whole hide sequence (suicide if alive -> spectator ->
+            // team none -> re-enable the team select menu). The module used to call
+            // ChangeTeam(Spectator) itself 0.5s beforehand, which raced that sequence
+            // and left the admin stuck in a half-applied team state on join.
+            target.ExecuteClientCommandFromServer("css_hide");
+        }, TimerFlags.STOP_ON_MAPCHANGE);
+
         return HookResult.Continue;
     }
 
@@ -206,27 +200,28 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
         var player = @event.Userid;
         if (player?.IsValid != true || player.IsBot) return HookResult.Continue;
 
+        var suppress = ShouldSuppressBroadcast(player);
+
         if (Config.BlockStatusCommand && _sharedApi != null && _sharedApi.IsAdminSilent(player))
             Server.ExecuteCommand($"mm_removeexcludeslot {player.Slot}");
 
-        Players.Remove(player);
-        // _admins.Remove(player.Slot);
-        
-        if (ShouldSuppressBroadcast(@event.Userid))
-                info.DontBroadcast = true;
-        
+        PlayerSlots.Remove(player.Slot);
+
+        if (suppress)
+            info.DontBroadcast = true;
+
         return HookResult.Continue;
     }
-    
+
     [GameEventHandler(HookMode.Pre)]
     public HookResult EventPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
     {
         if (ShouldSuppressBroadcast(@event.Userid, true))
             info.DontBroadcast = true;
-        
+
         return HookResult.Continue;
     }
-    
+
     private bool ShouldSuppressBroadcast(CCSPlayerController? player, bool checkTeam = false)
     {
         if (player?.IsValid != true || player.IsBot)
@@ -236,14 +231,11 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
         {
             return true;
         }
-    
+
         if (checkTeam && player.TeamNum > 1)
             return false;
 
         var steamId = new SteamID(player.SteamID);
         return Config.Permissions.Any(permission => AdminManager.PlayerHasPermissions(steamId, permission));
     }
-    
-    // private IEnumerable<CCSPlayerController> GetNonAdmins()
-    //     => Players.Where(p => !_admins.Contains(p));
-} 
+}

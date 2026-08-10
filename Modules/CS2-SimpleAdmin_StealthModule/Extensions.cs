@@ -24,8 +24,19 @@ public static class Extensions
 
     public static List<CCSPlayerController> GetSpectators(this CCSPlayerController player)
     {
-        return CS2_SimpleAdmin_StealthModule.Players
-            .Where(p => p.GetSpectatingPlayer()?.Slot == player.Slot)
-            .ToList();
+        // Resolve each tracked slot fresh — the module stores slots, not controller
+        // wrappers, precisely so nothing here can touch a freed entity.
+        var spectators = new List<CCSPlayerController>();
+
+        foreach (var slot in CS2_SimpleAdmin_StealthModule.PlayerSlots)
+        {
+            var candidate = Utilities.GetPlayerFromSlot(slot);
+            if (candidate is not { IsValid: true, IsBot: false }) continue;
+
+            if (candidate.GetSpectatingPlayer()?.Slot == player.Slot)
+                spectators.Add(candidate);
+        }
+
+        return spectators;
     }
 }

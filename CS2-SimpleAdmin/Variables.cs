@@ -39,6 +39,11 @@ public partial class CS2_SimpleAdmin
 
     // Player Management
     internal static readonly HashSet<int> SilentPlayers = [];
+
+    // Refcount for sv_disable_teamselect_menu — see OnHideCommand. The cvar is
+    // server-wide, so overlapping css_hide calls must not clear it early and a map
+    // change must not leave it stuck on.
+    internal static int TeamSelectLockDepth;
     internal static readonly Dictionary<ulong, string> RenamedPlayers = [];
     internal static readonly ConcurrentDictionary<ulong, PlayerInfo> PlayersInfo = [];
     internal static readonly List<CCSPlayerController> CachedPlayers = [];

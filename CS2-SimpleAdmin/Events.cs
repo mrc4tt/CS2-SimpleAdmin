@@ -465,6 +465,7 @@ public partial class CS2_SimpleAdmin
         // });
 
         SilentPlayers.Clear();
+        ResetTeamSelectLock();
 
         PlayerPenaltyManager.RemoveAllPenalties();
     }

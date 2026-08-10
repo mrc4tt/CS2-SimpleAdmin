@@ -903,18 +903,65 @@ public partial class CS2_SimpleAdmin
         }
         else
         {
-            Server.ExecuteCommand("sv_disable_teamselect_menu 1");
+            // sv_disable_teamselect_menu is a SERVER-WIDE cvar, so while it is on nobody
+            // can pick a team. Two admins hiding at once used to have the first one's
+            // restore timer clear the flag while the second was still mid-sequence, and
+            // a map change in the 0.5s window killed the restore timer outright (it is
+            // STOP_ON_MAPCHANGE) — leaving the whole server unable to join a team.
+            // Refcount it and restore through AcquireTeamSelectLock/ReleaseTeamSelectLock,
+            // which OnMapStart also resets.
+            AcquireTeamSelectLock();
 
             if (caller.PlayerPawn?.Value?.LifeState == (int)LifeState_t.LIFE_ALIVE)
                 caller.PlayerPawn.Value?.CommitSuicide(true, false);
 
             caller.PrintToChat($"You are hidden now!");
-            if (caller.TeamNum > 1)
-                AddTimer(0.15f, () => { Server.NextWorldUpdate(() => caller.ChangeTeam(CsTeam.Spectator)); }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-            AddTimer(0.26f, () => { Server.NextWorldUpdate(() => caller.ChangeTeam(CsTeam.None)); }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-            AddTimer(0.50f, () => { Server.NextWorldUpdate(() => Server.ExecuteCommand("sv_disable_teamselect_menu 0")); }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
+
+            // Resolve the controller again inside the timers: the admin can disconnect in
+            // the 0.15-0.5s window and the captured wrapper would then point at a freed
+            // entity (use-after-free -> SIGSEGV in libserver.so on Linux).
+            var slot = caller.Slot;
+            var steamId64 = caller.SteamID;
+            var wasOnTeam = caller.TeamNum > 1;
+
+            if (wasOnTeam)
+                AddTimer(0.15f, () => { Server.NextWorldUpdate(() => ChangeTeamBySlot(slot, steamId64, CsTeam.Spectator)); }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
+            AddTimer(0.26f, () => { Server.NextWorldUpdate(() => ChangeTeamBySlot(slot, steamId64, CsTeam.None)); }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
+            AddTimer(0.50f, () => { Server.NextWorldUpdate(ReleaseTeamSelectLock); });
             SimpleAdminApi?.OnAdminToggleSilentEvent(caller.Slot, true);
         }
+    }
+
+    private static void ChangeTeamBySlot(int slot, ulong steamId64, CsTeam team)
+    {
+        var player = Utilities.GetPlayerFromSlot(slot);
+        if (player is not { IsValid: true, IsBot: false }) return;
+        if (player.SteamID != steamId64) return;
+        if (player.Connected != PlayerConnectedState.Connected) return;
+
+        player.ChangeTeam(team);
+    }
+
+    internal static void AcquireTeamSelectLock()
+    {
+        TeamSelectLockDepth++;
+        Server.ExecuteCommand("sv_disable_teamselect_menu 1");
+    }
+
+    internal static void ReleaseTeamSelectLock()
+    {
+        if (TeamSelectLockDepth > 0)
+            TeamSelectLockDepth--;
+
+        if (TeamSelectLockDepth > 0) return;
+
+        Server.ExecuteCommand("sv_disable_teamselect_menu 0");
+    }
+
+    internal static void ResetTeamSelectLock()
+    {
+        TeamSelectLockDepth = 0;
+        Server.ExecuteCommand("sv_disable_teamselect_menu 0");
     }
 
     /// <summary>
