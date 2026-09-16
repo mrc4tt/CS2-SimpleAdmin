@@ -40,7 +40,7 @@ public static class ManagePlayersMenu
         if (hasSlay)
         {
             options.Add(new ChatMenuOptionData(localizer?["sa_slap"] ?? "Slap", () => PlayersMenu.OpenMenu(admin, localizer?["sa_slap"] ?? "Slap", SlapMenu)));
-            options.Add(new ChatMenuOptionData(localizer?["sa_slay"] ?? "Slay", () => PlayersMenu.OpenMenu(admin, localizer?["sa_slay"] ?? "Slay", Slay)));
+            options.Add(new ChatMenuOptionData(localizer?["sa_slay"] ?? "Slay", () => PlayersMenu.OpenMenu(admin, localizer?["sa_slay"] ?? "Slay", Slay, CS2_SimpleAdmin.CanBeSlain)));
         }
 
         if (hasKick)
@@ -121,7 +121,7 @@ public static class ManagePlayersMenu
 
     private static void Slay(CCSPlayerController admin, CCSPlayerController player)
     {
-        if (player is not { IsValid: true }) return;
+        if (!CS2_SimpleAdmin.CanBeSlain(player)) return;
 
         CS2_SimpleAdmin.Slay(admin, player);
     }

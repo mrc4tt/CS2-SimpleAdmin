@@ -109,7 +109,8 @@ public abstract class BasicMenu
             var localizer = CS2_SimpleAdmin._localizer;
             var slayMenu = new MenuBuilder("sa_slay", admin, localizer);
 
-            var players = Helper.GetValidPlayers().Where(admin.CanTarget);
+            // Only alive T/CT with a valid pawn - see CS2_SimpleAdmin.CanBeSlain
+            var players = Helper.GetValidPlayers().Where(p => CS2_SimpleAdmin.CanBeSlain(p) && admin.CanTarget(p));
 
             foreach (var player in players)
             {

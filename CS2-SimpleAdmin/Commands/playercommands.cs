@@ -25,7 +25,7 @@ public partial class CS2_SimpleAdmin
         var targets = GetTarget(command);
         if (targets == null) return;
 
-        var playersToTarget = targets.Players.Where(player => player.IsValid && player is {IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
+        var playersToTarget = targets.Players.Where(CanBeSlain).ToList();
 
         playersToTarget.ForEach(player =>
         {
@@ -44,7 +44,7 @@ public partial class CS2_SimpleAdmin
     /// <param name="command">Optional command info for logging.</param>
     internal static void Slay(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null)
     {
-        if (!player.IsValid || player.Connected != PlayerConnectedState.Connected) return;
+        if (!CanBeSlain(player)) return;
         if (!caller.CanTarget(player)) return;
 
         // Set default caller name if not provided
@@ -68,6 +68,24 @@ public partial class CS2_SimpleAdmin
         // Log the command and send Discord notification
         if (command == null)
             Helper.LogCommand(caller, $"css_slay {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)}");
+    }
+
+    /// <summary>
+    /// True when the player is a connected, alive T/CT with a valid pawn.
+    /// CommitSuicide() on a spectator, a dead player or a player whose pawn handle is
+    /// invalid can crash the server (same class of bug as css_respawn on spectators),
+    /// so every slay entry point (command + menus) must pass this check first.
+    /// </summary>
+    internal static bool CanBeSlain(CCSPlayerController? player)
+    {
+        if (player == null || !player.IsValid || player.IsHLTV) return false;
+        if (player.Connected != PlayerConnectedState.Connected) return false;
+        if (player.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist)) return false;
+
+        var pawn = player.PlayerPawn?.Value;
+        if (pawn == null || !pawn.IsValid) return false;
+
+        return pawn.LifeState == (byte)LifeState_t.LIFE_ALIVE;
     }
 
     /// <summary>
