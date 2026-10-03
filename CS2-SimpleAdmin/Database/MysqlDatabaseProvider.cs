@@ -428,6 +428,29 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
             ? "UPDATE sa_warns SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND player_steamid = @steamid"
             : "UPDATE sa_warns SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND player_steamid = @steamid AND server_id = @serverid";
 
+    public string GetPenaltyHistoryQuery(bool multiServer) =>
+        $"""
+        SELECT b.id, 'BAN' AS type, b.player_name, b.admin_name, b.reason, b.duration, b.created, b.ends, b.status,
+               ub.reason AS lift_reason, ub.date AS lift_date, ua.player_name AS lift_admin
+        FROM sa_bans b
+        LEFT JOIN sa_unbans ub ON ub.id = b.unban_id
+        LEFT JOIN sa_admins ua ON ua.id = ub.admin_id
+        WHERE b.player_steamid = @PlayerSteamID {(multiServer ? "" : "AND b.server_id = @serverid")}
+        UNION ALL
+        SELECT m.id, m.type, m.player_name, m.admin_name, m.reason, m.duration, m.created, m.ends, m.status,
+               um.reason AS lift_reason, um.date AS lift_date, ua.player_name AS lift_admin
+        FROM sa_mutes m
+        LEFT JOIN sa_unmutes um ON um.id = m.unmute_id
+        LEFT JOIN sa_admins ua ON ua.id = um.admin_id
+        WHERE m.player_steamid = @PlayerSteamID {(multiServer ? "" : "AND m.server_id = @serverid")}
+        UNION ALL
+        SELECT w.id, 'WARN' AS type, w.player_name, w.admin_name, w.reason, w.duration, w.created, w.ends, w.status,
+               NULL AS lift_reason, NULL AS lift_date, NULL AS lift_admin
+        FROM sa_warns w
+        WHERE w.player_steamid = @PlayerSteamID {(multiServer ? "" : "AND w.server_id = @serverid")}
+        ORDER BY created DESC
+        """;
+
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 

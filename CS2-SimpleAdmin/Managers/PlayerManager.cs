@@ -1,3 +1,4 @@
+using System.Globalization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Admin;
@@ -225,6 +226,46 @@ internal class PlayerManager
             }
         });
     }
+
+    /// <summary>
+    /// Returns every ban, gag/mute/silence and warn ever recorded for a SteamID, newest first.
+    /// Rows carry: type, status, reason, duration, created, ends, admin_name, lift_reason, lift_date, lift_admin.
+    /// </summary>
+    /// <param name="steamId">SteamID64 of the player, online or not.</param>
+    /// <param name="type">Optional filter: bans, gags, mutes, silences or warns.</param>
+    public async Task<List<dynamic>> GetPenaltyHistory(ulong steamId, string? type = null)
+    {
+        if (CS2_SimpleAdmin.DatabaseProvider == null) return [];
+
+        try
+        {
+            await using var connection = await CS2_SimpleAdmin.DatabaseProvider.CreateConnectionAsync();
+            var sql = CS2_SimpleAdmin.DatabaseProvider.GetPenaltyHistoryQuery(CS2_SimpleAdmin.Instance.Config.MultiServerMode);
+            var rows = (await connection.QueryAsync(sql, new { PlayerSteamID = steamId, serverid = CS2_SimpleAdmin.ServerId })).ToList();
+
+            // Filter word is the plural (bans, gags, mutes, silences, warns); rows carry BAN/GAG/MUTE/SILENCE/WARN
+            if (type != null)
+                rows.RemoveAll(r => !type.Equals((string)r.type + "s", StringComparison.OrdinalIgnoreCase));
+
+            return rows;
+        }
+        catch (Exception ex)
+        {
+            CS2_SimpleAdmin._logger?.LogError("Unable to load penalty history: {exception}", ex.Message);
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Dapper gives DateTime on MySQL but can give a string on SQLite; accept both.
+    /// </summary>
+    internal static DateTime? ToDateTime(object? value) =>
+        value switch
+        {
+            DateTime d => d,
+            string s when DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed) => parsed,
+            _ => null
+        };
 
     /// <summary>
     /// Loads permanent renames from the database into memory.

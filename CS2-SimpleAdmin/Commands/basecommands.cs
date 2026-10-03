@@ -1288,6 +1288,99 @@ public partial class CS2_SimpleAdmin
     }
 
     /// <summary>
+    /// Prints a player's full penalty history (bans, gags, mutes, silences, warns) to the caller's console.
+    /// Accepts a SteamID64 so it also works for players who are not online.
+    /// </summary>
+    /// <param name="caller">The player issuing the command or null for console.</param>
+    /// <param name="command">The command containing the target and an optional penalty type filter.</param>
+    [RequiresPermissions("@css/kick")]
+    [CommandHelper(minArgs: 1, usage: "<#userid or name or steamid64> [bans|gags|mutes|silences|warns]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    public void OnHistoryCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        if (DatabaseProvider == null || _localizer == null) return;
+
+        var filter = command.ArgCount > 2 ? command.GetArg(2).ToLowerInvariant() : null;
+        if (filter is not (null or "bans" or "gags" or "mutes" or "silences" or "warns"))
+        {
+            command.ReplyToCommand("Usage: css_history <#userid or name or steamid64> [bans|gags|mutes|silences|warns]");
+            return;
+        }
+
+        ulong steamId;
+        string? name = null;
+
+        if (Helper.ValidateSteamId(command.GetArg(1), out var parsedSteamId) && parsedSteamId != null)
+        {
+            if (caller != null && !caller.CanTarget(parsedSteamId)) return;
+
+            steamId = parsedSteamId.SteamId64;
+            if (PlayersInfo.TryGetValue(steamId, out var info)) name = info.Name;
+        }
+        else
+        {
+            var targets = GetTarget(command);
+            if (targets == null) return;
+
+            var players = targets.Players.Where(p => p is { IsValid: true, IsBot: false, IsHLTV: false }).ToList();
+            if (players.Count != 1)
+            {
+                command.ReplyToCommand("Only one target is allowed.");
+                return;
+            }
+
+            var player = players[0];
+            if (caller != null && !caller.CanTarget(player)) return;
+
+            steamId = player.SteamID;
+            name = player.PlayerName;
+        }
+
+        Helper.LogCommand(caller, command);
+        Action<string> print = caller == null ? Server.PrintToConsole : caller.PrintToConsole;
+        var callerSteamId = caller?.SteamID;
+
+        Task.Run(async () =>
+        {
+            var rows = await PlayerManager.GetPenaltyHistory(steamId, filter);
+            // Offline players are only known by SteamID; borrow the name stored on their latest record
+            name ??= rows.Count > 0 ? (string?)rows[0].player_name : null;
+
+            await Server.NextWorldUpdateAsync(() =>
+            {
+                // The slot may have been reused by another player while the query ran
+                if (caller != null && (!caller.IsValid || caller.SteamID != callerSteamId)) return;
+                PrintHistory(print, name ?? steamId.ToString(), steamId, rows);
+            });
+        });
+    }
+
+    /// <summary>
+    /// Writes history rows from <see cref="PlayerManager.GetPenaltyHistory"/> as one console line each.
+    /// </summary>
+    internal void PrintHistory(Action<string> print, string name, ulong steamId, List<dynamic> rows)
+    {
+        if (_localizer == null) return;
+
+        if (rows.Count == 0)
+        {
+            print(_localizer["sa_history_none", name]);
+            return;
+        }
+
+        print(_localizer["sa_history_header", name, steamId, rows.Count]);
+        foreach (var r in rows)
+        {
+            var duration = (int)r.duration == 0 ? "perm" : $"{(int)r.duration}m";
+            var line = $"[{Date(r.created)}] {(string)r.type,-7} {(string)r.status,-8} {duration,-6} by {(string)r.admin_name}: {(string)r.reason}";
+            if (r.lift_date != null)
+                line += $" | lifted {Date(r.lift_date)} by {(string?)r.lift_admin ?? "?"}: {(string?)r.lift_reason}";
+            print(line);
+        }
+
+        static string Date(object? value) => PlayerManager.ToDateTime(value)?.ToString("yyyy-MM-dd HH:mm") ?? "?";
+    }
+
+    /// <summary>
     /// Lists players currently connected to the server with options to output JSON or filter duplicate IPs.
     /// </summary>
     /// <param name="caller">The player issuing the command or null for console.</param>

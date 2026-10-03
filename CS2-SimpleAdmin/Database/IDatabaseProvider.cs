@@ -76,4 +76,7 @@ public interface IDatabaseProvider
     string GetUnwarnLastQuery(bool multiServer);
     string GetUnwarnAllQuery(bool multiServer);
     string GetExpireWarnsQuery(bool multiServer);
+
+    // Penalty history (css_history)
+    string GetPenaltyHistoryQuery(bool multiServer);
 }
