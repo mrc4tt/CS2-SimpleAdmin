@@ -236,8 +236,8 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
 
     public string GetUnbanRetrieveBansQuery(bool multiServer) =>
         multiServer
-            ? "SELECT id FROM sa_bans WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) AND status = 'ACTIVE'"
-            : "SELECT id FROM sa_bans WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) AND status = 'ACTIVE' AND server_id = @serverid";
+            ? "SELECT id, player_steamid FROM sa_bans WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) AND status = 'ACTIVE'"
+            : "SELECT id, player_steamid FROM sa_bans WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) AND status = 'ACTIVE' AND server_id = @serverid";
 
     public string GetUnbanAdminIdQuery() =>
         "SELECT id FROM sa_admins WHERE player_steamid = @adminSteamId";
@@ -247,13 +247,14 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
             ? "INSERT INTO sa_unbans (ban_id, admin_id, reason) VALUES (@banId, @adminId, @reason); SELECT last_insert_rowid();"
             : "INSERT INTO sa_unbans (ban_id, admin_id) VALUES (@banId, @adminId); SELECT last_insert_rowid();";
 
+    // SQLite has no ON UPDATE CURRENT_TIMESTAMP, so updated_at must be set explicitly or the cache refresh never sees the change
     public string GetUpdateBanStatusQuery() =>
-        "UPDATE sa_bans SET status = 'UNBANNED', unban_id = @unbanId WHERE id = @banId";
+        "UPDATE sa_bans SET status = 'UNBANNED', unban_id = @unbanId, updated_at = CURRENT_TIMESTAMP WHERE id = @banId";
 
     public string GetExpireBansQuery(bool multiServer) =>
         multiServer
-            ? "UPDATE sa_bans SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND duration > 0 AND ends <= @currentTime"
-            : "UPDATE sa_bans SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND duration > 0 AND ends <= @currentTime AND server_id = @serverid";
+            ? "UPDATE sa_bans SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP WHERE status = 'ACTIVE' AND duration > 0 AND ends <= @currentTime"
+            : "UPDATE sa_bans SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP WHERE status = 'ACTIVE' AND duration > 0 AND ends <= @currentTime AND server_id = @serverid";
 
     public string GetExpireIpBansQuery(bool multiServer) =>
         multiServer
@@ -262,7 +263,16 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
 
     public string GetExpireOldPlayerIpsQuery() =>
         "DELETE FROM sa_players_ips WHERE used_at <= @ipBansTime";
-    
+
+    public string GetRenamesQuery() =>
+        "SELECT player_steamid, name FROM sa_renames";
+
+    public string GetUpsertRenameQuery() =>
+        "INSERT INTO sa_renames (player_steamid, name) VALUES (@steamId, @name) ON CONFLICT(player_steamid) DO UPDATE SET name = excluded.name";
+
+    public string GetDeleteRenameQuery() =>
+        "DELETE FROM sa_renames WHERE player_steamid = @steamId";
+
     public string GetAdminsQuery() =>
         """
         SELECT sa_admins.player_steamid, sa_admins.player_name, sa_admins_flags.flag, sa_admins.immunity, sa_admins.ends

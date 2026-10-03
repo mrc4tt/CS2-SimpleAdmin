@@ -1,5 +1,6 @@
 ﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
+using CounterStrikeSharp.API.Modules.Entities;
 using CS2_SimpleAdminApi;
 using Dapper;
 using Microsoft.Extensions.Logging;
@@ -342,6 +343,9 @@ internal class BanManager(IDatabaseProvider? databaseProvider)
             var sqlUpdateBan = databaseProvider.GetUpdateBanStatusQuery();
             await connection.ExecuteAsync(sqlUpdateBan, new { unbanId, banId });
 
+            // Apply immediately; the periodic cache refresh would otherwise keep rejecting the player for up to a minute
+            CS2_SimpleAdmin.Instance.CacheManager?.SetBanStatus([(int)banId], Models.BanStatus.UNBANNED);
+
             return true;
         }
         catch (Exception ex)
@@ -381,6 +385,29 @@ internal class BanManager(IDatabaseProvider? databaseProvider)
 
             var sqlUpdateBan = databaseProvider.GetUpdateBanStatusQuery();
             await connection.ExecuteAsync(sqlUpdateBan, new { unbanId, banId });
+        }
+
+        // Apply immediately; the periodic cache refresh would otherwise keep rejecting the player for up to a minute
+        CS2_SimpleAdmin.Instance.CacheManager?.SetBanStatus(bansList.Select(b => (int)b.id), Models.BanStatus.UNBANNED);
+
+        // css_ban also issues a native banid when UnlockedCommands is on; clear it so the engine stops
+        // rejecting the player. Done here, after the rows are updated, and for whichever pattern matched them.
+        if (CS2_SimpleAdmin.UnlockedCommands)
+        {
+            var steamIds = bansList
+                .Select(b => (object?)b.player_steamid)
+                .Where(id => id != null)
+                .Select(id => Convert.ToUInt64(id))
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+
+            if (steamIds.Count > 0)
+                await Server.NextWorldUpdateAsync(() =>
+                {
+                    foreach (var steamId in steamIds)
+                        Server.ExecuteCommand($"removeid {new SteamID(steamId).SteamId3}");
+                });
         }
     }
     catch (Exception ex)

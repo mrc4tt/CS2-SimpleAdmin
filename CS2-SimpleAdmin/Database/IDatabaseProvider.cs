@@ -50,7 +50,12 @@ public interface IDatabaseProvider
     string GetExpireBansQuery(bool multiServer);
     string GetExpireIpBansQuery(bool multiServer);
     string GetExpireOldPlayerIpsQuery();
-    
+
+    // Renames (css_prename)
+    string GetRenamesQuery();
+    string GetUpsertRenameQuery();
+    string GetDeleteRenameQuery();
+
     // MuteManager
     string GetAddMuteQuery(bool includePlayerName);
     string GetIsMutedQuery(bool multiServer, int timeMode);

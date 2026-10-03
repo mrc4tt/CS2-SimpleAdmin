@@ -130,7 +130,7 @@
 	"sa_admin_voice_unmute_all": "{Lime}Вы включили звук {default}всем игрокам",
 	"sa_admin_voice_listen_all": "{Default}Теперь вы слышите {lime}всех {default}игроков",
 	"sa_admin_voice_unlisten_all": "{Default}Вы больше не слышите {lime}всех {default}игроков",
-	"sa_adminsay_prefix": "{RED}АДМИН: {lightred}{0}{default}",
+	"sa_adminsay_prefix": "{RED}{1}: {lightred}{0}{default}",
 	"sa_adminchat_template_admin": "{LIME}(АДМИН) {lightred}{0}{default}: {lightred}{1}{default}",
 	"sa_adminchat_template_player": "{SILVER}(ИГРОК) {lightred}{0}{default}: {lightred}{1}{default}",
 	"sa_discord_log_command": "**{0}** выполнил команду `{1}` на сервере `HOSTNAME`",

@@ -227,8 +227,8 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
     public string GetUnbanRetrieveBansQuery(bool multiServer)
     {
         return multiServer
-            ? "SELECT id FROM sa_bans WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) AND status = 'ACTIVE'"
-            : "SELECT id FROM sa_bans WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) AND status = 'ACTIVE' AND server_id = @serverid";
+            ? "SELECT id, player_steamid FROM sa_bans WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) AND status = 'ACTIVE'"
+            : "SELECT id, player_steamid FROM sa_bans WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) AND status = 'ACTIVE' AND server_id = @serverid";
     }
 
     public string GetUnbanAdminIdQuery()
@@ -247,6 +247,15 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
     {
         return "UPDATE sa_bans SET status = 'UNBANNED', unban_id = @unbanId WHERE id = @banId";
     }
+
+    public string GetRenamesQuery() =>
+        "SELECT player_steamid, name FROM sa_renames";
+
+    public string GetUpsertRenameQuery() =>
+        "INSERT INTO sa_renames (player_steamid, name) VALUES (@steamId, @name) ON DUPLICATE KEY UPDATE name = @name";
+
+    public string GetDeleteRenameQuery() =>
+        "DELETE FROM sa_renames WHERE player_steamid = @steamId";
 
     public string GetExpireBansQuery(bool multiServer)
     {

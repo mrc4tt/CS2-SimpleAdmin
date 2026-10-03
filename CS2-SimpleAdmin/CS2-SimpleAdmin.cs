@@ -81,7 +81,12 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
     {
         RegisterEvents();
         AddTimer(0.5f, RegisterCommands.InitializeCommands);
-        AddTimer(3.0f, () => ReloadAdmins(null));
+        // Admins are reloaded by ServerManager once ServerId is known (or on its failure paths).
+        // Loading the plugin mid-map (css_plugins load) fires no map start, so kick server loading off ourselves.
+        AddTimer(5.0f, () =>
+        {
+            if (!ServerLoaded) OnGameServerSteamAPIActivated();
+        });
 
         if (!CoreConfig.UnlockConCommands)
         {

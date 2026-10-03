@@ -39,24 +39,34 @@ public partial class CS2_SimpleAdmin
         if (caller == null || !caller.IsValid || !caller.UserId.HasValue || DatabaseProvider == null)
             return;
         
-        var userId = caller.UserId.Value;
         var steamId = caller.SteamID;
-        
+
         if (!string.IsNullOrEmpty(command.GetArg(1)) && AdminManager.PlayerHasPermissions(new SteamID(caller.SteamID), "@css/kick"))
         {
             var targets = GetTarget(command);
-            
+
             if (targets == null)
                 return;
-            
-            var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
-            playersToTarget.ForEach(player =>
-            {
-                if (!player.UserId.HasValue) return;
-                if (!caller.CanTarget(player)) return;
 
-                userId = player.UserId.Value;
-            });
+            var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
+            if (playersToTarget.Count != 1)
+            {
+                command.ReplyToCommand("Only one target is allowed.");
+                return;
+            }
+
+            var target = playersToTarget[0];
+            if (!target.UserId.HasValue || !caller.CanTarget(target)) return;
+
+            // Only the user id was reassigned before, so every lookup below used the caller's own penalties
+            steamId = target.SteamID;
+        }
+
+        // PlayersInfo is filled by the async connect load; a target who joined a moment ago may not be in it yet
+        if (!PlayersInfo.ContainsKey(steamId))
+        {
+            command.ReplyToCommand("Player data is still loading, try again in a moment.");
+            return;
         }
 
         Task.Run(async () =>
@@ -848,33 +858,74 @@ public partial class CS2_SimpleAdmin
     /// Reloads admin data asynchronously and updates admin caches.
     /// </summary>
     /// <param name="caller">The player issuing the reload command.</param>
+    private static readonly SemaphoreSlim ReloadAdminsLock = new(1, 1);
+    private static int _reloadGeneration;
+
     public void ReloadAdmins(CCSPlayerController? caller)
     {
         if (DatabaseProvider == null) return;
-        
+
         Task.Run(async () =>
         {
-            await PermissionManager.CrateGroupsJsonFile();
-            await PermissionManager.CreateAdminsJsonFile();
-            
-            var adminsFile = await File.ReadAllTextAsync(Instance.ModuleDirectory + "/data/admins.json");
-            var groupsFile = await File.ReadAllTextAsync(Instance.ModuleDirectory + "/data/groups.json");
-            
-               await Server.NextWorldUpdateAsync(() =>
+            // Serialize reloads end to end: overlapping ones (css_admins_reload, add admin, map change) race on the JSON files,
+            // and CSS reads them on timers up to 4s later. Capped so a hibernating server cannot hold the lock forever.
+            await ReloadAdminsLock.WaitAsync();
+            // If the cap expires (hibernation) and a newer reload runs, this one's pending timers must not apply a stale snapshot
+            var generation = Interlocked.Increment(ref _reloadGeneration);
+            try
             {
-                AddTimer(1, () =>
-                {
-                    if (!string.IsNullOrEmpty(adminsFile))
-                        AddTimer(2.0f, () => AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json"));
-                    if (!string.IsNullOrEmpty(groupsFile))
-                        AddTimer(3.0f, () => AdminManager.LoadAdminGroups(ModuleDirectory + "/data/groups.json"));
-                    if (!string.IsNullOrEmpty(adminsFile))
-                        AddTimer(4.0f, () => AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json"));
+                await PermissionManager.CrateGroupsJsonFile();
+                var admins = await PermissionManager.CreateAdminsJsonFile();
 
-                    _logger?.LogInformation("Loaded admins!");
+                var adminsFile = await File.ReadAllTextAsync(Instance.ModuleDirectory + "/data/admins.json");
+                var groupsFile = await File.ReadAllTextAsync(Instance.ModuleDirectory + "/data/groups.json");
+
+                var loaded = new TaskCompletionSource();
+                var scheduled = Server.NextWorldUpdateAsync(() =>
+                {
+                    AddTimer(1, () =>
+                    {
+                        if (!string.IsNullOrEmpty(adminsFile))
+                            AddTimer(2.0f, () =>
+                            {
+                                if (generation != _reloadGeneration) return;
+                                // Strip old permissions right before loading the new ones, not seconds earlier
+                                PermissionManager.ApplyAdminCache(admins);
+                                AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json");
+                            });
+                        if (!string.IsNullOrEmpty(groupsFile))
+                            AddTimer(3.0f, () =>
+                            {
+                                if (generation != _reloadGeneration) return;
+                                AdminManager.LoadAdminGroups(ModuleDirectory + "/data/groups.json");
+                            });
+                        AddTimer(4.0f, () =>
+                        {
+                            if (generation == _reloadGeneration)
+                            {
+                                if (!string.IsNullOrEmpty(adminsFile))
+                                    AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json");
+                                _logger?.LogInformation("Loaded admins!");
+                            }
+
+                            // Always completes, so a superseded reload cannot hold the lock until the cap
+                            loaded.TrySetResult();
+                        });
+                    });
                 });
-            });
-        });  
+
+                await Task.WhenAny(Task.WhenAll(scheduled, loaded.Task), Task.Delay(TimeSpan.FromSeconds(15)));
+            }
+            catch (Exception ex)
+            {
+                // A failed DB read aborts here, leaving current permissions untouched
+                _logger?.LogError("Unable to reload admins: {exception}", ex.Message);
+            }
+            finally
+            {
+                ReloadAdminsLock.Release();
+            }
+        });
 
         //_ = _adminManager.GiveAllGroupsFlags();
         //_ = _adminManager.GiveAllFlags();

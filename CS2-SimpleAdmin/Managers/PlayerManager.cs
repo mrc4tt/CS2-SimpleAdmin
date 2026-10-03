@@ -44,6 +44,11 @@ internal class PlayerManager
             : CS2_SimpleAdmin._localizer?["sa_unknown"] ?? "Unknown";
         var ipAddress = player.IpAddress?.Split(":")[0];
 
+        if (CS2_SimpleAdmin.RenamedPlayers.TryGetValue(steamId, out var renamedTo))
+        {
+            player.Rename(renamedTo);
+        }
+
         if (CS2_SimpleAdmin.DatabaseProvider == null || CS2_SimpleAdmin.Instance.CacheManager == null) return;
 
         Task.Run(async () =>
@@ -219,10 +224,52 @@ internal class PlayerManager
                 _loadPlayerSemaphore.Release();
             }
         });
+    }
 
-        if (CS2_SimpleAdmin.RenamedPlayers.TryGetValue(player.SteamID, out var name))
+    /// <summary>
+    /// Loads permanent renames from the database into memory.
+    /// </summary>
+    public async Task LoadRenamedPlayers()
+    {
+        if (CS2_SimpleAdmin.DatabaseProvider == null) return;
+
+        try
         {
-            player.Rename(name);
+            await using var connection = await CS2_SimpleAdmin.DatabaseProvider.CreateConnectionAsync();
+            var rows = await connection.QueryAsync<(long steamId, string name)>(CS2_SimpleAdmin.DatabaseProvider.GetRenamesQuery());
+
+            await Server.NextWorldUpdateAsync(() =>
+            {
+                foreach (var (steamId, name) in rows)
+                    CS2_SimpleAdmin.RenamedPlayers[(ulong)steamId] = name;
+            });
+        }
+        catch (Exception ex)
+        {
+            CS2_SimpleAdmin._logger?.LogError("Unable to load renames: {exception}", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Persists or removes a permanent rename (css_prename) for a player.
+    /// </summary>
+    /// <param name="steamId">SteamID64 of the player.</param>
+    /// <param name="name">Forced name, or null/empty to remove the rename.</param>
+    public async Task SaveRenamedPlayer(ulong steamId, string? name)
+    {
+        if (CS2_SimpleAdmin.DatabaseProvider == null) return;
+
+        try
+        {
+            await using var connection = await CS2_SimpleAdmin.DatabaseProvider.CreateConnectionAsync();
+            if (string.IsNullOrEmpty(name))
+                await connection.ExecuteAsync(CS2_SimpleAdmin.DatabaseProvider.GetDeleteRenameQuery(), new { steamId });
+            else
+                await connection.ExecuteAsync(CS2_SimpleAdmin.DatabaseProvider.GetUpsertRenameQuery(), new { steamId, name });
+        }
+        catch (Exception ex)
+        {
+            CS2_SimpleAdmin._logger?.LogError("Unable to save rename: {exception}", ex.Message);
         }
     }
 
