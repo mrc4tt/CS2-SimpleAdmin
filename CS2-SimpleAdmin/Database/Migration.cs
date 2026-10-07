@@ -22,7 +22,7 @@ public class Migration(string migrationsPath, bool isSqlite)
     {
         "sa_bans", "sa_mutes", "sa_warns", "sa_admins", "sa_admins_flags",
         "sa_groups", "sa_groups_flags", "sa_groups_servers",
-        "sa_unbans", "sa_unmutes", "sa_players_ips", "sa_servers"
+        "sa_unbans", "sa_unmutes", "sa_players_ips", "sa_servers", "sa_renames"
     };
 
     public async Task ExecuteMigrationsAsync()
