@@ -1,4 +1,5 @@
 ﻿using System.Data.Common;
+using System.Reflection;
 using Microsoft.Extensions.Logging;
 
 namespace CS2_SimpleAdmin.Database;
@@ -27,7 +28,7 @@ public class Migration(string migrationsPath, bool isSqlite)
     public async Task ExecuteMigrationsAsync()
     {
         if (CS2_SimpleAdmin.DatabaseProvider == null) return;
-        var files = Directory.GetFiles(migrationsPath, "*.sql").OrderBy(f => f).ToList();
+        var files = await LoadMigrationsAsync();
         if (files.Count == 0) return;
 
         await using var connection = await CS2_SimpleAdmin.DatabaseProvider.CreateConnectionAsync();
@@ -35,6 +36,42 @@ public class Migration(string migrationsPath, bool isSqlite)
 
         await RunPendingMigrationsAsync(connection, files);
         await ReconcileSchemaAsync(connection, files);
+    }
+
+    /// <summary>
+    /// Collects migrations from the embedded copies in the DLL and from the migrations folder on disk.
+    /// A file on disk wins over the embedded copy of the same version, but a version missing on disk
+    /// (e.g. only the DLL was updated) still runs from the embedded copy.
+    /// </summary>
+    private async Task<List<(string version, string sql)>> LoadMigrationsAsync()
+    {
+        var scripts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        // LogicalName is Migrations/<Dialect>/<file>.sql; RecursiveDir may use either slash
+        var prefix = $"Migrations/{Path.GetFileName(migrationsPath.TrimEnd('/', '\\'))}/";
+        var assembly = Assembly.GetExecutingAssembly();
+        foreach (var resource in assembly.GetManifestResourceNames())
+        {
+            var name = resource.Replace('\\', '/');
+            if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ||
+                !name.EndsWith(".sql", StringComparison.OrdinalIgnoreCase)) continue;
+
+            await using var stream = assembly.GetManifestResourceStream(resource);
+            if (stream == null) continue;
+            using var reader = new StreamReader(stream);
+            scripts[Path.GetFileNameWithoutExtension(name)] = await reader.ReadToEndAsync();
+        }
+
+        if (Directory.Exists(migrationsPath))
+        {
+            foreach (var file in Directory.GetFiles(migrationsPath, "*.sql"))
+                scripts[Path.GetFileNameWithoutExtension(file)] = await File.ReadAllTextAsync(file);
+        }
+
+        return scripts
+            .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+            .Select(kv => (kv.Key, kv.Value))
+            .ToList();
     }
 
     private async Task EnsureMigrationsTableAsync(DbConnection connection)
@@ -46,18 +83,16 @@ public class Migration(string migrationsPath, bool isSqlite)
         await cmd.ExecuteNonQueryAsync();
     }
 
-    private async Task RunPendingMigrationsAsync(DbConnection connection, List<string> files)
+    private async Task RunPendingMigrationsAsync(DbConnection connection, List<(string version, string sql)> files)
     {
         var applied = await GetAppliedVersionsAsync(connection);
 
-        foreach (var file in files)
+        foreach (var (version, sqlScript) in files)
         {
-            var version = Path.GetFileNameWithoutExtension(file);
             if (applied.Contains(version)) continue;
 
             try
             {
-                var sqlScript = await File.ReadAllTextAsync(file);
 
                 if (string.IsNullOrWhiteSpace(sqlScript))
                 {
@@ -117,7 +152,7 @@ public class Migration(string migrationsPath, bool isSqlite)
     /// and re-run all migrations from scratch. Idempotency of every migration
     /// makes this safe.
     /// </summary>
-    private async Task ReconcileSchemaAsync(DbConnection connection, List<string> files)
+    private async Task ReconcileSchemaAsync(DbConnection connection, List<(string version, string sql)> files)
     {
         var missing = new List<string>();
         foreach (var table in CriticalTables)

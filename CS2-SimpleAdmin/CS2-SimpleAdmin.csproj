@@ -59,6 +59,8 @@
 
 	<ItemGroup>
     <None Update="Database\Migrations\**\*.sql" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Also embedded, so a DLL-only update still carries new migrations (see Migration.cs) -->
+    <EmbeddedResource Include="Database\Migrations\**\*.sql" LogicalName="Migrations/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
   
   <ItemGroup>
