@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
@@ -15,6 +16,18 @@ namespace CS2_SimpleAdmin.Managers;
 internal class PlayerManager
 {
     private readonly SemaphoreSlim _loadPlayerSemaphore = new(6);
+    // (UserId, SteamID) pairs already ban-checked this connection. LoadPlayerData runs from both
+    // OnClientConnected and player_connect_full, so without this every join is checked/logged twice.
+    private readonly ConcurrentDictionary<(int UserId, ulong SteamId), byte> _banCheckedPlayers = new();
+
+    public void ForgetBanCheck(int userId)
+    {
+        foreach (var key in _banCheckedPlayers.Keys)
+        {
+            if (key.UserId == userId)
+                _banCheckedPlayers.TryRemove(key, out _);
+        }
+    }
     private readonly CS2_SimpleAdminConfig _config = CS2_SimpleAdmin.Instance.Config;
 
     /// <summary>
@@ -31,6 +44,9 @@ internal class PlayerManager
     /// </remarks>
     public void LoadPlayerData(CCSPlayerController player, bool fullConnect = false)
     {
+        if (player.IsHLTV || player.IsBot)
+            return;
+
         if (!player.UserId.HasValue)
         {
             Helper.KickPlayer(player, NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_INVALIDCONNECTION);
@@ -58,32 +74,45 @@ internal class PlayerManager
             {
                 await _loadPlayerSemaphore.WaitAsync();
 
-                // Save ip address before ban check
-                await SavePlayerIpAddress(steamId, playerName, ipAddress);
+                // SteamID 0 = not authenticated yet; don't mark it so the later call still checks the real ID
+                var alreadyChecked = steamId != 0 && !_banCheckedPlayers.TryAdd((userId, steamId), 0);
 
-                // Always check bans first, regardless of PlayersInfo state
-                var isBanned = CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType switch
+                if (!alreadyChecked)
                 {
-                    0 => CS2_SimpleAdmin.Instance.CacheManager.IsPlayerBanned(playerName, steamId, null),
-                    _ => CS2_SimpleAdmin.Instance.Config.OtherSettings.CheckMultiAccountsByIp
-                        ? CS2_SimpleAdmin.Instance.CacheManager.IsPlayerOrAnyIpBanned(playerName, steamId,
-                            ipAddress)
-                        : CS2_SimpleAdmin.Instance.CacheManager.IsPlayerBanned(playerName, steamId, ipAddress)
-                };
+                    // Save ip address before ban check
+                    if (steamId != 0)
+                        await SavePlayerIpAddress(steamId, playerName, ipAddress);
 
-                CS2_SimpleAdmin._logger?.LogInformation($"[BAN CHECK] Player {playerName} ({steamId}) IP: {ipAddress} - BanType: {CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType} - CheckMultiAccounts: {CS2_SimpleAdmin.Instance.Config.OtherSettings.CheckMultiAccountsByIp} - isBanned: {isBanned}");
-
-                if (isBanned)
-                {
-                    CS2_SimpleAdmin._logger?.LogInformation($"[BAN CHECK] KICKING {playerName} ({steamId})");
-                    await Server.NextWorldUpdateAsync(() =>
+                    // Always check bans first, regardless of PlayersInfo state
+                    var isBanned = CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType switch
                     {
-                        CS2_SimpleAdmin._logger?.LogInformation($"[BAN CHECK] Executing kick for {playerName}");
-                        Helper.KickPlayer(userId, NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED);
-                    });
+                        0 => CS2_SimpleAdmin.Instance.CacheManager.IsPlayerBanned(playerName, steamId, null),
+                        _ => CS2_SimpleAdmin.Instance.Config.OtherSettings.CheckMultiAccountsByIp
+                            ? CS2_SimpleAdmin.Instance.CacheManager.IsPlayerOrAnyIpBanned(playerName, steamId,
+                                ipAddress)
+                            : CS2_SimpleAdmin.Instance.CacheManager.IsPlayerBanned(playerName, steamId, ipAddress)
+                    };
 
-                    return;
+                    CS2_SimpleAdmin._logger?.LogDebug($"[BAN CHECK] Player {playerName} ({steamId}) IP: {ipAddress} - BanType: {CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType} - CheckMultiAccounts: {CS2_SimpleAdmin.Instance.Config.OtherSettings.CheckMultiAccountsByIp} - isBanned: {isBanned}");
+
+                    if (isBanned)
+                    {
+                        // Keep re-checking until the kick lands
+                        _banCheckedPlayers.TryRemove((userId, steamId), out _);
+                        CS2_SimpleAdmin._logger?.LogInformation($"[BAN CHECK] KICKING {playerName} ({steamId})");
+                        await Server.NextWorldUpdateAsync(() =>
+                        {
+                            CS2_SimpleAdmin._logger?.LogInformation($"[BAN CHECK] Executing kick for {playerName}");
+                            Helper.KickPlayer(userId, NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED);
+                        });
+
+                        return;
+                    }
                 }
+
+                // Unauthenticated: IP/name ban check above is all we can do; player_connect_full loads the rest
+                if (steamId == 0)
+                    return;
 
                 if (!CS2_SimpleAdmin.PlayersInfo.ContainsKey(steamId))
                 {

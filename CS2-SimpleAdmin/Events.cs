@@ -108,11 +108,13 @@ public partial class CS2_SimpleAdmin
 #endif
         try
         {
-            if (DisconnectedPlayers.Count >= Config.OtherSettings.DisconnectedPlayersHistoryCount)
-                DisconnectedPlayers.RemoveAt(0);
-
             var steamId = new SteamID(player.SteamID);
             var disconnectedPlayer = DisconnectedPlayers.FirstOrDefault(p => p.SteamId == steamId);
+
+            // Only evict when a new entry is about to be added
+            if (disconnectedPlayer == null && DisconnectedPlayers.Count > 0 &&
+                DisconnectedPlayers.Count >= Config.OtherSettings.DisconnectedPlayersHistoryCount)
+                DisconnectedPlayers.RemoveAt(0);
 
             if (disconnectedPlayer != null)
             {
@@ -129,7 +131,10 @@ public partial class CS2_SimpleAdmin
             PlayerPenaltyManager.RemoveAllPenalties(player.Slot);
             
             if (player.UserId.HasValue)
+            {
                 PlayersInfo.TryRemove(player.SteamID, out _);
+                PlayerManager.ForgetBanCheck(player.UserId.Value);
+            }
 
             if (!PermissionManager.AdminCache.TryGetValue(steamId, out var data)
                 || !(data.ExpirationTime <= Time.ActualDateTime()))
@@ -176,7 +181,7 @@ public partial class CS2_SimpleAdmin
 #endif
 
         var player = Utilities.GetPlayerFromSlot(playerslot);
-        if (player == null || !player.IsValid || player.IsBot)
+        if (player == null || !player.IsValid || player.IsBot || player.IsHLTV)
             return;
         
         if (!CachedPlayers.Contains(player))
@@ -233,7 +238,10 @@ public partial class CS2_SimpleAdmin
         if (player == null || !player.IsValid)
             return HookResult.Continue;
 
-        if (player is { IsBot: true, IsHLTV: false })
+        if (player.IsHLTV)
+            return HookResult.Continue;
+
+        if (player.IsBot)
         {
             BotPlayers.Add(player);
             return HookResult.Continue;
