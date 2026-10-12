@@ -6,6 +6,7 @@ on:
     branches: [ "main" ]
     paths-ignore:
       - '**/README.md'
+      - 'CHANGELOG.md'
   pull_request:
     branches: [ "main" ]
     paths-ignore:
@@ -181,38 +182,79 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: cs2-build:latest
+    env:
+      VERSION: ${{ needs.build.outputs.build_version }}
+      FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
 
+      # Releases are tagged v<VERSION>. Only publish when VERSION was bumped:
+      # skip if v<VERSION> (or the legacy build-<VERSION>) release exists, so
+      # ordinary pushes to main don't overwrite a published release.
+      - name: Check for existing release
+        id: check
+        shell: bash
+        run: |
+          set -euo pipefail
+          exists=false
+          for tag in "v${VERSION}" "build-${VERSION}"; do
+            code=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+                   -H "Authorization: token ${FORGEJO_TOKEN}" \
+                   "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/tags/${tag}")
+            if [ "$code" = "200" ]; then
+              echo ">> Release $tag already exists; bump CS2-SimpleAdmin/VERSION to publish."
+              exists=true
+            fi
+          done
+          echo "exists=$exists" >> "$GITHUB_OUTPUT"
+
+      # Release notes = the "## [<VERSION>]" section of CHANGELOG.md
+      # (written by scripts/release.sh) + install instructions.
+      - name: Build release notes
+        id: notes
+        if: steps.check.outputs.exists == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          changes=$(awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md | sed -e '/./,$!d')
+          if [ -z "$changes" ]; then
+            echo "!! CHANGELOG.md has no [${VERSION}] section" >&2
+            changes="See CHANGELOG.md."
+          fi
+          {
+            echo "notes<<RELEASE_NOTES_EOF"
+            echo "$changes"
+            echo
+            echo "### Bundled"
+            echo "- CS2MenuManager ${{ needs.build.outputs.cs2mm_tag }} (latest at build time)"
+            echo
+            echo "### Install"
+            echo "Extract the zip into \`addons/counterstrikesharp\`. The required menu manager plugin is already included."
+            echo "After the first launch, configure the plugin in \`addons/counterstrikesharp/configs/plugins/CS2-SimpleAdmin/CS2-SimpleAdmin.json\`, then restart or reload the server."
+            echo "RELEASE_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Download build artifacts
+        if: steps.check.outputs.exists == 'false'
         uses: https://code.forgejo.org/forgejo/download-artifact@v4
         with:
           name: CS2-SimpleAdmin-Build-Artifacts
           path: release
 
-      - name: Publish combined release
+      - name: Publish release
+        if: steps.check.outputs.exists == 'false'
         uses: https://code.forgejo.org/actions/forgejo-release@v2
         with:
           direction: upload
           url: ${{ github.server_url }}
           repo: ${{ github.repository }}
-          tag: build-${{ needs.build.outputs.build_version }}
+          tag: v${{ env.VERSION }}
           sha: ${{ github.sha }}
-          title: CS2-SimpleAdmin-${{ needs.build.outputs.build_version }}
+          title: CS2-SimpleAdmin v${{ env.VERSION }}
           release-dir: release
-          override: true
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          release-notes: |
-            Bundled third-party plugins (drop-in install — no separate downloads):
-              • CS2MenuManager ${{ needs.build.outputs.cs2mm_tag }} (latest at build time)
-
-            Place the files in your server as follows:
-
-            - CS2-SimpleAdmin (everything bundled):
-              Place the files inside the addons/counterstrikesharp directory.
-              The required menu manager plugin is already included — no separate
-              downloads needed.
-              After the first launch, configure the plugin using the JSON config file at:
-              addons/counterstrikesharp/configs/plugins/CS2-SimpleAdmin/CS2-SimpleAdmin.json
-
-            Remember to restart or reload your game server after installing and configuring the plugins.
+          token: ${{ env.FORGEJO_TOKEN }}
+          release-notes: ${{ steps.notes.outputs.notes }}
