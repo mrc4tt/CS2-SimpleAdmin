@@ -4,6 +4,11 @@ Notable changes for server admins. Internal refactors, CI and build tweaks are l
 
 Releases are tagged `vX.Y.Z` (older releases used `build-X.Y.Z`).
 
+## [1.9.3] - 2026-10-22
+
+### Fixed
+- Handle SDR/P2P players without IP (show as "SDR relay")
+
 ## [1.9.2] - 2026-10-09
 
 ### Fixed
