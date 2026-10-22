@@ -59,7 +59,7 @@ internal class PlayerManager
         var playerName = !string.IsNullOrEmpty(player.PlayerName)
             ? player.PlayerName
             : CS2_SimpleAdmin._localizer?["sa_unknown"] ?? "Unknown";
-        var ipAddress = player.IpAddress?.Split(":")[0];
+        var ipAddress = IpHelper.GetPlayerIp(player.IpAddress);
 
         if (CS2_SimpleAdmin.RenamedPlayers.TryGetValue(steamId, out var renamedTo))
         {
@@ -465,7 +465,7 @@ internal class PlayerManager
                 {
                     var playerName = player.PlayerName;
                     var steamId = player.SteamID;
-                    var ip = player.IpAddress?.Split(':')[0];
+                    var ip = IpHelper.GetPlayerIp(player.IpAddress);
 
                     bool isBanned = banType switch
                     {

@@ -1085,8 +1085,8 @@ public partial class CS2_SimpleAdmin
                     }
                     printMethod($"• SteamID2: \"{playerInfo.SteamId.SteamId2}\"");
                     printMethod($"• Community link: \"{playerInfo.SteamId.ToCommunityUrl()}\"");
-                    if (playerInfo.IpAddress != null && AdminManager.PlayerHasPermissions(new SteamID(caller!.SteamID), "@css/showip"))
-                        printMethod($"• IP Address: \"{playerInfo.IpAddress}\"");
+                    if ((playerInfo.IpAddress != null || IpHelper.IsSdrAddress(player.IpAddress)) && AdminManager.PlayerHasPermissions(new SteamID(caller!.SteamID), "@css/showip"))
+                        printMethod($"• IP Address: \"{playerInfo.IpAddress ?? IpHelper.GetPlayerIpDisplay(player.IpAddress)}\"");
                     printMethod($"• Ping: \"{player.Ping}\"");
                     printMethod($"• Total Bans: \"{playerInfo.TotalBans}\"");
                     printMethod($"• Total Gags: \"{playerInfo.TotalGags}\"");
@@ -1394,7 +1394,8 @@ public partial class CS2_SimpleAdmin
         var isDuplicate = command.GetArg(1).ToLower().Equals("-duplicate") || command.GetArg(2).ToLower().Equals("-duplicate");
 
         var playersToTarget = isDuplicate
-            ? Helper.GetValidPlayers().GroupBy(player => player.IpAddress?.Split(":")[0] ?? "Unknown")
+            ? Helper.GetValidPlayers().Where(player => IpHelper.GetPlayerIp(player.IpAddress) != null)
+                .GroupBy(player => IpHelper.GetPlayerIp(player.IpAddress))
                 .Where(group => group.Count() > 1)
                 .SelectMany(group => group)
                 .ToList()
@@ -1408,7 +1409,7 @@ public partial class CS2_SimpleAdmin
                 foreach (var player in playersToTarget)
                 {
                     caller.PrintToConsole(
-                        $"• [#{player.UserId}] \"{player.PlayerName}\" (IP Address: \"{(AdminManager.PlayerHasPermissions(new SteamID(caller.SteamID), "@css/showip") ? player.IpAddress?.Split(":")[0] : "Unknown")}\" SteamID64: \"{player.SteamID}\")");
+                        $"• [#{player.UserId}] \"{player.PlayerName}\" (IP Address: \"{(AdminManager.PlayerHasPermissions(new SteamID(caller.SteamID), "@css/showip") ? IpHelper.GetPlayerIpDisplay(player.IpAddress) : "Unknown")}\" SteamID64: \"{player.SteamID}\")");
                 };
                 caller.PrintToConsole("--------- END PLAYER LIST ---------");
             }
@@ -1417,7 +1418,7 @@ public partial class CS2_SimpleAdmin
                 Server.PrintToConsole("--------- PLAYER LIST ---------");
                 foreach (var player in playersToTarget)
                 {
-                    Server.PrintToConsole($"• [#{player.UserId}] \"{player.PlayerName}\" (IP Address: \"{player.IpAddress?.Split(":")[0]}\" SteamID64: \"{player.SteamID}\")");
+                    Server.PrintToConsole($"• [#{player.UserId}] \"{player.PlayerName}\" (IP Address: \"{IpHelper.GetPlayerIpDisplay(player.IpAddress)}\" SteamID64: \"{player.SteamID}\")");
                 };
                 Server.PrintToConsole("--------- END PLAYER LIST ---------");
             }
@@ -1441,7 +1442,7 @@ public partial class CS2_SimpleAdmin
                         player.PlayerName,
                         player.SteamID.ToString(),
                         AdminManager.PlayerHasPermissions(new SteamID(caller!.SteamID), "@css/showip")
-                            ? player.IpAddress?.Split(":")[0] ?? "Unknown"
+                            ? IpHelper.GetPlayerIpDisplay(player.IpAddress)
                             : "Unknown",
                         player.Ping,
                         AdminManager.PlayerHasPermissions(new SteamID(player.SteamID), "@css/ban")

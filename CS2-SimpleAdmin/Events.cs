@@ -119,13 +119,13 @@ public partial class CS2_SimpleAdmin
             if (disconnectedPlayer != null)
             {
                 disconnectedPlayer.Name = player.PlayerName;
-                disconnectedPlayer.IpAddress = player.IpAddress?.Split(":")[0];
+                disconnectedPlayer.IpAddress = IpHelper.GetPlayerIp(player.IpAddress);
                 disconnectedPlayer.DisconnectTime = Time.ActualDateTime();
             }
             else
             {
                 DisconnectedPlayers.Add(new DisconnectedPlayer(steamId, player.PlayerName,
-                    player.IpAddress?.Split(":")[0], Time.ActualDateTime()));
+                    IpHelper.GetPlayerIp(player.IpAddress), Time.ActualDateTime()));
             }
             
             PlayerPenaltyManager.RemoveAllPenalties(player.Slot);

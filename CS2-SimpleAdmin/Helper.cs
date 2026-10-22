@@ -63,7 +63,7 @@ internal static class Helper
 
     public static List<CCSPlayerController> GetPlayerFromIp(string ipAddress)
     {
-        return CS2_SimpleAdmin.CachedPlayers.FindAll(x => x.IpAddress != null && x.IpAddress.Split(":")[0].Equals(ipAddress));
+        return CS2_SimpleAdmin.CachedPlayers.FindAll(x => IpHelper.GetPlayerIp(x.IpAddress) == ipAddress);
     }
 
     public static List<CCSPlayerController> GetValidPlayers()
@@ -1191,6 +1191,34 @@ public static class IpHelper
         ipUint = IpToUint(ipString);
         return true;
     }
+
+    /// <summary>
+    /// Extracts the IPv4 part of a player's network address ("1.2.3.4:27005").
+    /// Returns null for addresses without a real IP, e.g. Steam Datagram Relay / P2P
+    /// connections which report the SteamID3 ("[U:1:226067954]:0") instead.
+    /// </summary>
+    public static string? GetPlayerIp(string? address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+            return null;
+
+        var colon = address.LastIndexOf(':');
+        var host = colon >= 0 ? address[..colon] : address;
+
+        return TryConvertIpToUint(host, out _) ? host : null;
+    }
+
+    /// <summary>
+    /// Steam Datagram Relay / P2P connections report the client's SteamID3 as address.
+    /// </summary>
+    public static bool IsSdrAddress(string? address) =>
+        address != null && address.StartsWith("[");
+
+    /// <summary>
+    /// Player IP for admin-facing output: the IPv4, "SDR relay" for relayed clients, else "Unknown".
+    /// </summary>
+    public static string GetPlayerIpDisplay(string? address) =>
+        GetPlayerIp(address) ?? (IsSdrAddress(address) ? "SDR relay" : "Unknown");
 
     public static string UintToIp(uint ipAddress)
     {
