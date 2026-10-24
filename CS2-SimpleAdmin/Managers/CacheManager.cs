@@ -442,7 +442,9 @@ internal class CacheManager: IDisposable
     /// </summary>
     /// <param name="steamId">64-bit Steam ID of the player.</param>
     /// <returns>List of <see cref="BanRecord"/> objects associated with the Steam ID.</returns>
-    public List<BanRecord> GetPlayerBansBySteamId(ulong steamId) => _steamIdIndex.TryGetValue(steamId, out var bans) ? bans : [];
+    // _steamIdIndex holds only ACTIVE bans, so scan the full cache for history (expired/unbanned included).
+    public List<BanRecord> GetPlayerBansBySteamId(ulong steamId) =>
+        _banCache.Values.Where(b => b.PlayerSteamId == steamId).ToList();
     
     /// <summary>
     /// Gets all known Steam accounts that have used the specified IP address.
