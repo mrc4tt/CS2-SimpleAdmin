@@ -4,6 +4,11 @@ Notable changes for server admins. Internal refactors, CI and build tweaks are l
 
 Releases are tagged `vX.Y.Z` (older releases used `build-X.Y.Z`).
 
+## [1.9.4] - 2026-10-24
+
+### Fixed
+- The admin notice on player connect always showed 0 bans, gags, mutes and silences. It now shows the player's real penalty history.
+
 ## [1.9.3] - 2026-10-22
 
 ### Fixed
