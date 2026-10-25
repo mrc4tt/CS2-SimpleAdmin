@@ -9,8 +9,6 @@
 
 # CS2-SimpleAdmin (Forked)
 
----
-
 > **Manage your Counter-Strike 2 server with simple commands!**  
 > CS2-SimpleAdmin is a plugin designed to help you easily manage your Counter-Strike 2 server with user-friendly commands. Whether you're banning players, managing teams, or configuring server settings, CS2-SimpleAdmin has you covered.
 
