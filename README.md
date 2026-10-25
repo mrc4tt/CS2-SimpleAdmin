@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/Made_with-a_lot_of_tea_%F0%9F%8D%B5-red" alt="Made with a lot of tea 🍵" />
 </p>
 
-# CS2-SimpleAdmin
+# CS2-SimpleAdmin (Forked)
 
 ---
 
@@ -37,7 +37,7 @@
 CS2-SimpleAdmin is fully self-contained — drop the release zip into
 `addons/counterstrikesharp/` and you're done. The release ships with:
 
-- [CS2MenuManager](https://github.com/schwarper/CS2MenuManager) (bundled — pinned version listed in release notes)
+- [CS2MenuManager](https://git.miksen.me/mrc4tt/CS2MenuManager) (bundled — pinned version listed in release notes)
 - MySQL **or** SQLite (built-in, see "Choosing a database" below)
 
 ---
@@ -45,7 +45,7 @@ CS2-SimpleAdmin is fully self-contained — drop the release zip into
 ## 🚀 Getting Started
 
 1. **Clone or Download the Repository**:  
-   Download or clone the repository and publish to your `addons/counterstrikesharp/plugins/` directory.
+   Download or clone the repository and place it in your `addons/counterstrikesharp/plugins/` directory.
 
 2. **First Launch Configuration**:  
    On the first launch, a configuration file will be generated at:
@@ -76,7 +76,7 @@ The configuration file (`CS2-SimpleAdmin.json`) will be auto-generated after the
 
 ### SQLite operational notes
 
-- The plugin opens the database in WAL mode. Alongside `cs2-simpleadmin.sqlite` you'll see two sidecar files: `cs2-simpleadmin.sqlite-wal` and `cs2-simpleadmin.sqlite-shm`. **Copy/move all three together** when relocating the database, or run `css_sqlbackup` first (see below) and copy the resulting consolidated file.
+- The plugin opens the database in WAL mode. Alongside `cs2-simpleadmin.sqlite`, you'll see two sidecar files: `cs2-simpleadmin.sqlite-wal` and `cs2-simpleadmin.sqlite-shm`. **Copy/move all three together** when relocating the database, or run `css_sqlbackup` first (see below) and copy the resulting consolidated file.
 - `css_sqlbackup` (root only) writes a timestamped consistent copy to `addons/counterstrikesharp/plugins/CS2-SimpleAdmin/backups/` via `VACUUM INTO`, then prunes older backups beyond the `SqliteBackupRetainCount` config value (default 14). Safe to run while players are online.
 - For MySQL, use `mysqldump` — `css_sqlbackup` will refuse and tell you so.
 
