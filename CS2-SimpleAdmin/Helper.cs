@@ -982,7 +982,7 @@ public static class PluginInfo
     internal static async Task CheckVersion(string localVersion, ILogger logger)
     {
         ShowAd(localVersion);
-        const string versionUrl = "https://raw.githubusercontent.com/mrc4tt/SimpleAdmin/main/CS2-SimpleAdmin/VERSION";
+        const string versionUrl = "https://raw.githubusercontent.com/mrc4tt/CS2-SimpleAdmin/main/CS2-SimpleAdmin/VERSION";
         var client = CS2_SimpleAdmin.HttpClient;
         client.Timeout = TimeSpan.FromSeconds(3);
         
@@ -1000,7 +1000,7 @@ public static class PluginInfo
                 switch (comparisonResult)
                 {
                     case < 0:
-                        logger.LogWarning("Plugin is outdated! Check https://github.com/mrc4tt/SimpleAdmin/releases");
+                        logger.LogWarning("Plugin is outdated! Check https://github.com/mrc4tt/CS2-SimpleAdmin/releases");
                         break;
                     case > 0:
                         logger.LogInformation("Probably dev version detected");
@@ -1036,7 +1036,7 @@ public static class PluginInfo
         Console.WriteLine(" _____| ||   | | ||_|| ||   |    |       ||   |___ |   _   ||       || ||_|| ||   | | | |   |");
         Console.WriteLine("|_______||___| |_|   |_||___|    |_______||_______||__| |__||______| |_|   |_||___| |_|  |__|");
         Console.WriteLine("				>> Version: " + moduleVersion);
-        Console.WriteLine("		>> GitHub: https://github.com/mrc4tt/SimpleAdmin");
+        Console.WriteLine("		>> GitHub: https://github.com/mrc4tt/CS2-SimpleAdmin");
         Console.WriteLine(" ");
     }
 }

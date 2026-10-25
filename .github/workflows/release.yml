@@ -1,6 +1,6 @@
 # Builds and publishes a release from a version tag (vX.Y.Z).
 #
-# This workflow is disabled on mrc4tt/SimpleAdmin, where releases are built and
+# This workflow is disabled on mrc4tt/CS2-SimpleAdmin, where releases are built and
 # published from a local machine. It is kept for forks: enable Actions in your fork,
 # set CS2-SimpleAdmin/VERSION and a "## [X.Y.Z]" section in CHANGELOG.md, then push
 # tag vX.Y.Z.

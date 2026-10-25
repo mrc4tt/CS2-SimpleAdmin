@@ -1,6 +1,6 @@
 # CS2-SimpleAdmin
 
-CounterStrikeSharp admin plugin. Fork at `github.com/mrc4tt/SimpleAdmin` (ex-Forgejo, gone). Upstream `daffyyyy/CS2-SimpleAdmin` dead — no upstream PRs.
+CounterStrikeSharp admin plugin. Fork at `github.com/mrc4tt/CS2-SimpleAdmin` (ex-Forgejo, gone). Upstream `daffyyyy/CS2-SimpleAdmin` dead — no upstream PRs.
 
 ## Layout
 - `CS2-SimpleAdmin/` main plugin (`CS2-SimpleAdmin.cs`). `VERSION` = release version, change only via `release.sh`.
@@ -33,5 +33,5 @@ Fork-specific: `css_sqlbackup` (root, SQLite-only, `<ModuleDir>/backups/`, retai
 ## CI / Release
 - `.github/workflows/build.yml`: build check only, never releases.
 - `scripts/` gitignored, local: `package.sh` builds zip (`counterstrikesharp/{plugins,shared}`, bundles CS2MenuManager, `CS2MM_TAG` pins). `release.sh [-e] [-n] [X.Y.Z|patch|minor|major]` bumps from conventional commits, writes CHANGELOG + VERSION, builds, commits `chore(release): vX.Y.Z`, tags, pushes, `gh release create`. `-n` dry run. Read script for details.
-- Tags `vX.Y.Z`. Update check reads `VERSION` from `raw.githubusercontent.com/mrc4tt/SimpleAdmin/main`.
+- Tags `vX.Y.Z`. Update check reads `VERSION` from `raw.githubusercontent.com/mrc4tt/CS2-SimpleAdmin/main`.
 - `CHANGELOG.md` = admin-visible behaviour only.
