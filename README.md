@@ -34,7 +34,7 @@
 CS2-SimpleAdmin is fully self-contained — drop the release zip into
 `addons/counterstrikesharp/` and you're done. The release ships with:
 
-- [CS2MenuManager](https://git.miksen.me/mrc4tt/CS2MenuManager) (bundled — pinned version listed in release notes)
+- [CS2MenuManager](https://github.com/mrc4tt/CS2MenuManager) (bundled - pinned version listed in release notes)
 - MySQL **or** SQLite (built-in, see "Choosing a database" below)
 
 ---
@@ -85,10 +85,24 @@ This project started as a base for other plugins but has grown into a standalone
 
 ---
 
+## 💬 Support
+
+Need help, found a bug, or have a feature idea? Join the Discord support server:
+
+[![Discord](https://img.shields.io/badge/Discord-Join%20the%20server-5865F2?logo=discord&logoColor=white)](https://discord.gg/zuQN3U2ZEh)
+
+- **Questions and setup help:** ask in the support channels on Discord.
+- **Bug reports:** open a [GitHub issue](https://github.com/mrc4tt/CS2-SimpleAdmin/issues) with your server log, plugin version and steps to reproduce. Discord is fine for a quick check first.
+- **Feature requests:** post them on Discord or open an [issue](https://github.com/mrc4tt/CS2-SimpleAdmin/issues).
+
+Please do not send support requests by direct message. Asking in the public channels means others can help and find the answer later.
+
+---
+
 ## 🤝 Contributing & Feedback
 
 Help improve CS2-SimpleAdmin by:
-- Reporting bugs or requesting features on [GitHub](https://github.com/mrc4tt/SimpleAdmin/issues)
+- Reporting bugs or requesting features on [GitHub](https://github.com/mrc4tt/CS2-SimpleAdmin/issues)
 - Submitting pull requests with improvements
 - Participating in discussions and sharing ideas
 
