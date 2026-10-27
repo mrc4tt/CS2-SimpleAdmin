@@ -3,7 +3,7 @@
 CounterStrikeSharp admin plugin. Fork at `github.com/mrc4tt/CS2-SimpleAdmin` (ex-Forgejo, gone). Upstream `daffyyyy/CS2-SimpleAdmin` dead — no upstream PRs.
 
 ## Layout
-- `CS2-SimpleAdmin/` main plugin (`CS2-SimpleAdmin.cs`). `VERSION` = release version, change only via `release.sh`.
+- `CS2-SimpleAdmin/` main plugin (`CS2-SimpleAdmin.cs`). `VERSION` = release version, bumped by the RE release (`build-all.sh`), not by hand.
 - `CS2-SimpleAdminApi/` public API (`ICS2-SimpleAdminApi.cs`).
 - `Modules/` — only `CS2-SimpleAdmin_FunCommands`, `CS2-SimpleAdmin_StealthModule` ship. Rest not in release.
 - `.sln` = plugin + API only; each module own `.csproj`, built individually.
@@ -31,7 +31,9 @@ Fork-specific: `css_sqlbackup` (root, SQLite-only, `<ModuleDir>/backups/`, retai
 - Discord: `Helper.LogCommand` covers standard line; extra `DiscordWebhookClientLog?.SendMessageAsync` only for extra detail.
 
 ## CI / Release
-- `.github/workflows/build.yml`: build check only, never releases.
-- `scripts/` gitignored, local: `package.sh` builds zip (`counterstrikesharp/{plugins,shared}`, bundles CS2MenuManager, `CS2MM_TAG` pins). `release.sh [-e] [-n] [X.Y.Z|patch|minor|major]` bumps from conventional commits, writes CHANGELOG + VERSION, builds, commits `chore(release): vX.Y.Z`, tags, pushes, `gh release create`. `-n` dry run. Read script for details.
+- No GitHub Actions (workflows removed, Actions off). Releases built on RE server (`re.miksen.me`, `/root/cs2-build-system`): ops.miksen.me → Releases, or `server-ops release --only CS2-SimpleAdmin [--dry-run]` / `gh workflow run release -R mrc4tt/server-ops -f only=CS2-SimpleAdmin [-f dry_run=false]`. Dry run default.
+- `build-all.sh` has a `CS2-SimpleAdmin` case mirroring `package.sh` (zip root `counterstrikesharp/{plugins,shared}`, bundles CS2MenuManager latest or `CS2MM_TAG`). Settings in `plugins.conf [CS2-SimpleAdmin]`. Bumps patch from commit count since last tag, commits `Release vX.Y.Z` (VERSION + CHANGELOG), tags, `gh release create`.
+- CHANGELOG: auto section dumps all non-docs/ci/chore subjects under `### Changed`. For admin-only Added/Fixed wording, commit the `## [X.Y.Z] - date` section by hand before releasing; existing section is kept.
+- `scripts/` gitignored, local: old `package.sh` / `release.sh` (superseded, don't mix with RE releases).
 - Tags `vX.Y.Z`. Update check reads `VERSION` from `raw.githubusercontent.com/mrc4tt/CS2-SimpleAdmin/main`.
 - `CHANGELOG.md` = admin-visible behaviour only.
