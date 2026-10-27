@@ -4,6 +4,14 @@ Notable changes for server admins. Internal refactors, CI and build tweaks are l
 
 Releases are tagged `vX.Y.Z` (older releases used `build-X.Y.Z`).
 
+## [1.9.5] - 2026-10-27
+
+### Changed
+
+- Update README.md
+- Update README.md
+- Update README.md
+
 ## [1.9.4] - 2026-10-24
 
 ### Fixed
