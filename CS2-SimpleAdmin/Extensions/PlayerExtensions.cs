@@ -79,6 +79,9 @@ public static class PlayerExtensions
         if (playerPawnValue == null) return;
 
         playerPawnValue.VelocityModifier = speed;
+        // Only the game networks this field on its own (and only while it recovers below 1),
+        // so going e.g. 2 -> 1 never reached the client without this.
+        Utilities.SetStateChanged(playerPawnValue, "CCSPlayerPawn", "m_flVelocityModifier");
     }
 
     /// <summary>
