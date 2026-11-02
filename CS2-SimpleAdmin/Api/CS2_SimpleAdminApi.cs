@@ -161,18 +161,27 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
         }
         
         list.Add(definition);
+
+        if (RegisterCommands.CommandsRegistered)
+            CS2_SimpleAdmin.Instance.AddCommand(name, definition.Description, definition.Callback);
     }
 
     public void UnRegisterCommand(string commandName)
     {
-        var definitions = RegisterCommands._commandDefinitions[commandName];
-        if (definitions.Count == 0)
+        // TryGetValue: a module may unregister a name it never registered (an edited config
+        // list), and the indexer threw KeyNotFoundException out of the module's Unload.
+        if (!RegisterCommands._commandDefinitions.TryGetValue(commandName, out var definitions))
             return;
 
         foreach (var definition in definitions)
         {
             CS2_SimpleAdmin.Instance.RemoveCommand(commandName, definition.Callback);
         }
+
+        // Drop the definitions too (this already removed every callback for the name). Kept,
+        // every `css_plugins reload` of a module left its old callbacks in this static list next
+        // to the new ones: they pinned the unloaded module's assembly in memory.
+        RegisterCommands._commandDefinitions.Remove(commandName);
     }
 
     public TargetResult? GetTarget(CommandInfo command)

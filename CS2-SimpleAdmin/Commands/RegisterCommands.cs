@@ -11,6 +11,11 @@ public static class RegisterCommands
 {
     internal static readonly Dictionary<string, IList<CommandDefinition>> _commandDefinitions =
         new(StringComparer.InvariantCultureIgnoreCase);
+
+    // Set once Register() has added _commandDefinitions to CounterStrikeSharp. After that, a
+    // module registering a command (its own hot reload) must add it directly: Register() runs
+    // only at startup, so those commands were stored here and never added.
+    internal static bool CommandsRegistered { get; private set; }
     
     private delegate void CommandCallback(CCSPlayerController? caller, CommandInfo.CommandCallback callback);
     
@@ -240,6 +245,8 @@ public static class RegisterCommands
                 CS2_SimpleAdmin.Instance.AddCommand(name, definition.Description, definition.Callback);
             }
         }
+
+        CommandsRegistered = true;
     }
     
     /// <summary>
