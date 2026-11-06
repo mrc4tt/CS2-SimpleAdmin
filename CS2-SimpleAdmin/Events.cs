@@ -456,6 +456,31 @@ public partial class CS2_SimpleAdmin
         return HookResult.Handled;
     }
 
+    /// <summary>
+    /// Runs MapPrefixCommands entries whose prefix matches the map name (e.g. "aim_" -> unload game-mode plugins).
+    /// Skipped on plugin hot-reload (empty map name) so reloading SimpleAdmin never unloads other plugins mid-map.
+    /// </summary>
+    private void ExecuteMapPrefixCommands(string mapName)
+    {
+        if (string.IsNullOrEmpty(mapName) || Config.MapPrefixCommands.Count == 0)
+            return;
+
+        foreach (var (prefix, commands) in Config.MapPrefixCommands)
+        {
+            if (string.IsNullOrEmpty(prefix) || !mapName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            foreach (var command in commands)
+            {
+                if (string.IsNullOrWhiteSpace(command))
+                    continue;
+
+                Logger.LogInformation($"[MapPrefixCommands] {mapName} matches \"{prefix}\": {command}");
+                Server.ExecuteCommand(command);
+            }
+        }
+    }
+
     private void OnMapStart(string mapName)
     {
         if (Config.OtherSettings.ReloadAdminsEveryMapChange && ServerLoaded && ServerId != null)
@@ -476,6 +501,8 @@ public partial class CS2_SimpleAdmin
         ResetTeamSelectLock();
 
         PlayerPenaltyManager.RemoveAllPenalties();
+
+        ExecuteMapPrefixCommands(mapName);
     }
 
     [GameEventHandler]

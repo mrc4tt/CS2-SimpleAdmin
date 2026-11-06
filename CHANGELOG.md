@@ -4,6 +4,11 @@ Notable changes for server admins. Internal refactors, CI and build tweaks are l
 
 Releases are tagged `vX.Y.Z` (older releases used `build-X.Y.Z`).
 
+## [Unreleased]
+
+### Added
+- `MapPrefixCommands` config option: server commands run on map start when the map name starts with a given prefix (case-insensitive). Works however the map was changed (`css_map`, `css_wsmap`, `changelevel`, workshop collections, votes). Example: `{ "aim_": ["exec custom/modesoff.cfg"] }` unloads game-mode plugins (Retakes, Prefire, Deathmatch, MatchZy) on aim_ maps, while de_/cs_ maps keep the current mode. Empty by default, so nothing changes unless you set it. Not run when SimpleAdmin itself is hot-reloaded.
+
 ## [1.9.5] - 2026-10-27
 
 ### Changed

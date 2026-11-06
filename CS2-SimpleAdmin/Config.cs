@@ -285,6 +285,15 @@ public class CS2_SimpleAdminConfig : BasePluginConfig
     [JsonPropertyName("WorkshopMaps")]
     public Dictionary<string, long?> WorkshopMaps { get; set; } = new();
 
+    /// <summary>
+    /// Server commands executed on map start when the map name starts with the given prefix (case-insensitive).
+    /// Works for every map change path (css_map, css_wsmap, changelevel, workshop collections, votes).
+    /// Example: { "aim_": ["exec custom/modesoff.cfg"] } unloads game-mode plugins on aim_ maps,
+    /// while de_/cs_ maps (workshop or not) keep the current mode.
+    /// </summary>
+    [JsonPropertyName("MapPrefixCommands")]
+    public Dictionary<string, List<string>> MapPrefixCommands { get; set; } = new();
+
     [JsonPropertyName("CustomServerCommands")]
     public List<CustomServerCommandData> CustomServerCommands { get; set; } = new();
 
