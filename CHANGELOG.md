@@ -4,6 +4,12 @@ Notable changes for server admins. Internal refactors, CI and build tweaks are l
 
 Releases are tagged `vX.Y.Z` (older releases used `build-X.Y.Z`).
 
+## [1.9.6] - 2026-11-08
+
+### Fixed
+- Module commands keep working after a module is reloaded.
+- `css_speed 1` now resets player speed correctly.
+
 ## [1.9.5] - 2026-10-27
 
 ### Changed
