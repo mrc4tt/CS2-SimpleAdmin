@@ -559,7 +559,7 @@ public partial class CS2_SimpleAdmin
     /// <param name="caller">The admin/player issuing the unmute.</param>
     /// <param name="command">The command arguments including target identifier and optional reason.</param>
     [RequiresPermissions("@css/chat")]
-    [CommandHelper(minArgs: 1, usage: "<steamid or name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    [CommandHelper(minArgs: 1, usage: "<steamid or name> [reason]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnUnmuteCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (DatabaseProvider == null) return;
@@ -752,7 +752,7 @@ public partial class CS2_SimpleAdmin
     /// <param name="caller">The player/admin issuing the command.</param>
     /// <param name="command">The command input containing SteamID, optional time, and reason.</param>
     [RequiresPermissions("@css/chat")]
-    [CommandHelper(minArgs: 1, usage: "<#userid or name> [time in minutes/0 perm] [reason]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    [CommandHelper(minArgs: 1, usage: "<steamid> [time in minutes/0 perm] [reason]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnAddSilenceCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (DatabaseProvider == null) return;
