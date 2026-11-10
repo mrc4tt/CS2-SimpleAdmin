@@ -64,6 +64,8 @@
 	"sa_discord_penalty_warn": "警告记录",
 	"sa_discord_penalty_unknown": "未知记录",
 
+	"sa_player_penalty_chat_active": "{lightred}你的聊天已被禁止至: {grey}{0}",
+
 	"sa_player_penalty_info_active_mute": "➔ 静音 [{lightred}❌{default}] - 将于 [{lightred}{0}{default}] 过期",
 	"sa_player_penalty_info_active_gag": "➔ 禁言 [{lightred}❌{default}] - 将于 [{lightred}{0}{default}] 过期",
 	"sa_player_penalty_info_active_silence": "➔ 沉默 [{lightred}❌{default}] - 将于 [{lightred}{0}{default}] 过期",
