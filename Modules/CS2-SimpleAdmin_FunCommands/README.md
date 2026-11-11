@@ -1,5 +1,8 @@
 # CS2-SimpleAdmin Fun Commands Module
 
+> **For server admins:** commands, flags and config of this module are documented at
+> [simpleadmin.miksen.me/guides/fun-and-stealth](https://simpleadmin.miksen.me/guides/fun-and-stealth/).
+
 This module serves as a **reference implementation** for creating CS2-SimpleAdmin modules. It demonstrates best practices for menu creation, command registration, translation support, and API usage.
 
 ## 📚 What This Module Teaches

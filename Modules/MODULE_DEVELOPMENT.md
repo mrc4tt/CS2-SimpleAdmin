@@ -1,5 +1,8 @@
 # Module Development Guide - CS2-SimpleAdmin
 
+> **📘 Docs:** the module guide and the full API reference are also at
+> [simpleadmin.miksen.me/extending/modules](https://simpleadmin.miksen.me/extending/modules/).
+
 > **🎓 New to module development?** Start with the [Fun Commands Module](./CS2-SimpleAdmin_FunCommands/) - it's a fully documented reference implementation showing all best practices!
 
 This guide explains how to create modules for CS2-SimpleAdmin with custom commands, menus, and translations.
@@ -49,6 +52,7 @@ YourModule/
 ```csharp
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Capabilities;
+using CounterStrikeSharp.API.Modules.Admin; // AdminManager.CanPlayerTarget
 using CS2_SimpleAdminApi;
 
 public class MyModule : BasePlugin
@@ -118,7 +122,7 @@ public class MyModule : BasePlugin
         return _api!.CreateMenuWithPlayers(
             context,  // ← Contains title & category automatically!
             admin,
-            player => player.IsValid && admin.CanTarget(player),
+            player => player.IsValid && AdminManager.CanPlayerTarget(admin, player),
             (adminPlayer, targetPlayer) =>
             {
                 adminPlayer.PrintToChat($"You selected {targetPlayer.PlayerName}");
@@ -181,7 +185,7 @@ private object CreateGodModeMenu(CCSPlayerController admin, MenuContext context)
     return _api.CreateMenuWithPlayers(
         context,                            // ← Contains title & category automatically!
         admin,                              // Admin
-        player => player.IsValid && admin.CanTarget(player),  // Filter
+        player => player.IsValid && AdminManager.CanPlayerTarget(admin, player),  // Filter
         (adminPlayer, target) =>            // Action
         {
             // Execute action immediately
@@ -204,7 +208,7 @@ private object CreateGodModeMenu(CCSPlayerController admin, MenuContext context)
 private object CreateSetHpMenu(CCSPlayerController admin, MenuContext context)
 {
     var menu = _api.CreateMenuWithBack(context, admin);  // ← No more repeating title & category!
-    var players = _api.GetValidPlayers().Where(p => admin.CanTarget(p));
+    var players = _api.GetValidPlayers().Where(p => AdminManager.CanPlayerTarget(admin, p));
 
     foreach (var player in players)
     {
@@ -253,7 +257,7 @@ private object CreateHpValueMenu(CCSPlayerController admin, CCSPlayerController 
 private object CreateGiveWeaponMenu(CCSPlayerController admin)
 {
     var menu = _api.CreateMenuWithBack("Give Weapon", "yourmodule", admin);
-    var players = _api.GetValidPlayers().Where(p => admin.CanTarget(p));
+    var players = _api.GetValidPlayers().Where(p => AdminManager.CanPlayerTarget(admin, p));
 
     foreach (var player in players)
     {
@@ -484,7 +488,7 @@ Creates a menu with a list of players, filtered and with automatic back button.
 **Example (Old API):**
 ```csharp
 return _api.CreateMenuWithPlayers("Select Player to Kick", "admin", admin,
-    player => player.IsValid && admin.CanTarget(player),
+    player => player.IsValid && AdminManager.CanPlayerTarget(admin, player),
     (adminPlayer, targetPlayer) =>
     {
         // Kick the selected player
@@ -497,7 +501,7 @@ return _api.CreateMenuWithPlayers("Select Player to Kick", "admin", admin,
 private object CreateKickMenu(CCSPlayerController admin, MenuContext context)
 {
     return _api.CreateMenuWithPlayers(context, admin,
-        player => player.IsValid && admin.CanTarget(player),
+        player => player.IsValid && AdminManager.CanPlayerTarget(admin, player),
         (adminPlayer, targetPlayer) =>
         {
             Server.ExecuteCommand($"css_kick {targetPlayer.UserId}");
@@ -568,7 +572,7 @@ private object CreateGiveWeaponMenu(CCSPlayerController admin)
 {
     var menu = _api.CreateMenuWithBack("Give Weapon", "fun", admin);
     var players = _api.GetValidPlayers()
-        .Where(p => p.PlayerPawn?.Value?.LifeState == (int)LifeState_t.LIFE_ALIVE && admin.CanTarget(p));
+        .Where(p => p.PlayerPawn?.Value?.LifeState == (int)LifeState_t.LIFE_ALIVE && AdminManager.CanPlayerTarget(admin, p));
 
     foreach (var player in players)
     {
@@ -606,7 +610,7 @@ private object CreateWeaponSelectionMenu(CCSPlayerController admin, CCSPlayerCon
 private object CreateSetHpMenu(CCSPlayerController admin)
 {
     var menu = _api.CreateMenuWithBack("Set HP", "admin", admin);
-    var players = _api.GetValidPlayers().Where(p => admin.CanTarget(p));
+    var players = _api.GetValidPlayers().Where(p => AdminManager.CanPlayerTarget(admin, p));
 
     foreach (var player in players)
     {
@@ -741,7 +745,7 @@ var alivePlayers = _api.GetValidPlayers()
     .Where(p => p.PlayerPawn?.Value?.LifeState == (int)LifeState_t.LIFE_ALIVE);
 
 var targetablePlayers = _api.GetValidPlayers()
-    .Where(p => admin.CanTarget(p));
+    .Where(p => AdminManager.CanPlayerTarget(admin, p));
 ```
 
 ## Complete Module Example
