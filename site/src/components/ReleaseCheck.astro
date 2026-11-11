@@ -1,0 +1,12 @@
+---
+// Drop-in for Markdown pages with a download link: marks the built version and runs the browser
+// release check (src/scripts/release-check.js) on that page.
+import { version } from '../data/plugin';
+---
+
+<span hidden data-sa-built={version}></span>
+
+<script>
+	import { checkRelease } from '../scripts/release-check.js';
+	checkRelease();
+</script>

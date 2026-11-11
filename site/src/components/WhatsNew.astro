@@ -1,0 +1,136 @@
+---
+// What's new: the newest releases from CHANGELOG.md as cards, with a filter by kind (Added,
+// Changed, Fixed...). The newest RECENT releases are open, the rest folded under Older releases.
+import { changelog, inline, isUnreleased, kindClass, latestRelease, versionId } from '../data/changelog';
+
+const RECENT = 4;
+const { releases } = changelog();
+const recent = releases.slice(0, RECENT);
+const older = releases.slice(RECENT);
+const kinds = [...new Set(releases.flatMap((r) => r.sections.map((s) => s.kind)))];
+const counts = Object.fromEntries(kinds.map((k) => [k, releases.reduce((n, r) => n + r.sections.filter((s) => s.kind === k).reduce((m, s) => m + s.items.length, 0), 0)]));
+const total = releases.reduce((n, r) => n + r.count, 0);
+---
+
+<div class="sa-wn" data-sa-built={latestRelease}>
+	<div class="sa-filter not-content" role="toolbar" aria-label="Filter changes" hidden>
+		<button type="button" data-kind="all" aria-pressed="true">All <span>{total}</span></button>
+		{kinds.map((k) => (
+			<button type="button" data-kind={k} aria-pressed="false"><i class={`sa-kind sa-kind--${kindClass(k)}`}></i>{k} <span>{counts[k]}</span></button>
+		))}
+	</div>
+
+	{[recent, older].map((list, li) => {
+		const cards = list.map((r) => (
+			<section class="sa-rel" id={versionId(r.version)} data-rel>
+				<header class="sa-rel__head">
+					<h2><a href={`#${versionId(r.version)}`}>{r.version}</a></h2>
+					{r.date && <span class="sa-rel__date">{r.date}</span>}
+					{isUnreleased(r.version) && <span class="sa-unreleased" data-sa-unreleased={r.version}>Not released yet</span>}
+					{!isUnreleased(r.version) && <a class="sa-rel__more" href={`https://github.com/mrc4tt/CS2-SimpleAdmin/releases/tag/v${r.version}`}>Release on GitHub →</a>}
+				</header>
+				<ul class="sa-items">
+					{r.sections.flatMap((s) => s.items.map((i) => (
+						<li data-kind={s.kind}>
+							<span class={`sa-tag sa-tag--${kindClass(s.kind)}`}>{s.kind}</span>
+							<span set:html={inline(i)} />
+						</li>
+					)))}
+				</ul>
+			</section>
+		));
+		return li === 0 ? cards : list.length > 0 && (
+			<details class="sa-older" data-older>
+				<summary>Older releases <span>{list[list.length - 1].version} to {list[0].version}</span></summary>
+				{cards}
+			</details>
+		);
+	})}
+
+	<p class="sa-empty" hidden>No changes of this kind.</p>
+	<p>The <a href="/changelog/">full changelog</a> lists every release with a search.</p>
+</div>
+
+<script>
+	for (const root of document.querySelectorAll<HTMLElement>('.sa-wn')) {
+		const bar = root.querySelector<HTMLElement>('.sa-filter')!;
+		const older = root.querySelector<HTMLDetailsElement>('[data-older]');
+		const empty = root.querySelector<HTMLElement>('.sa-empty')!;
+		bar.hidden = false;
+		bar.addEventListener('click', (e) => {
+			const btn = (e.target as HTMLElement).closest('button');
+			if (!btn) return;
+			const kind = btn.dataset.kind!;
+			for (const b of bar.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === btn));
+			let shown = 0;
+			for (const rel of root.querySelectorAll<HTMLElement>('[data-rel]')) {
+				let any = false;
+				for (const li of rel.querySelectorAll<HTMLElement>('.sa-items > li')) {
+					const on = kind === 'all' || li.dataset.kind === kind;
+					li.hidden = !on;
+					any ||= on;
+				}
+				rel.hidden = !any;
+				if (any) shown++;
+			}
+			if (older) older.open = kind !== 'all';
+			empty.hidden = shown > 0;
+		});
+	}
+</script>
+
+<script>
+	import { checkRelease } from '../scripts/release-check.js';
+	checkRelease();
+</script>
+
+<style>
+	.sa-filter { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-block: 1.5rem 0.5rem; }
+	.sa-filter button {
+		display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; border: 1px solid var(--sa-line);
+		border-radius: 999px; background: var(--sa-surface); color: var(--sl-color-gray-2); font: inherit; font-size: var(--sl-text-sm); cursor: pointer;
+	}
+	.sa-filter button span { color: var(--sl-color-gray-3); font-variant-numeric: tabular-nums; }
+	.sa-filter button:hover { border-color: var(--sl-color-gray-4); color: var(--sl-color-white); }
+	.sa-filter button[aria-pressed='true'] { border-color: var(--sl-color-accent); color: var(--sl-color-white); background: var(--sl-color-accent-low); }
+	.sa-kind { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--k); }
+
+	.sa-rel { margin-top: 2rem; padding: 1.25rem 1.25rem 0.5rem; border: 1px solid var(--sa-line); border-radius: 0.75rem; background: var(--sa-surface); }
+	.sa-rel__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.9rem; }
+	.sa-rel__head h2 { margin: 0; font-size: var(--sl-text-2xl); font-variant-numeric: tabular-nums; }
+	.sa-rel__head h2 a { color: inherit; text-decoration: none; }
+	.sa-rel__head h2 a:hover { color: var(--sl-color-accent-high); }
+	.sa-rel__date { color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); }
+	.sa-rel__more { margin-left: auto; font-size: var(--sl-text-sm); text-decoration: none; }
+
+	.sa-items { list-style: none; padding: 0; }
+	.sa-items > li {
+		display: grid; grid-template-columns: 5.5rem 1fr; gap: 0.75rem; align-items: baseline;
+		padding-block: 0.55rem; margin: 0; border-top: 1px solid var(--sa-line);
+	}
+	.sa-items > li:first-child { border-top: 0; }
+	.sa-tag {
+		justify-self: start; padding: 0.05rem 0.5rem; border-radius: 0.35rem; font-size: var(--sl-text-xs); font-weight: 600;
+		letter-spacing: 0.02em; color: var(--k); background: color-mix(in srgb, var(--k) 14%, transparent);
+	}
+	.sa-tag--added, .sa-kind--added { --k: var(--sa-k-added); }
+	.sa-tag--changed, .sa-kind--changed, .sa-tag--other, .sa-kind--other { --k: var(--sa-k-changed); }
+	.sa-tag--fixed, .sa-kind--fixed { --k: var(--sa-k-fixed); }
+	.sa-tag--security, .sa-kind--security { --k: var(--sa-k-security); }
+	.sa-tag--removed, .sa-kind--removed, .sa-tag--deprecated, .sa-kind--deprecated { --k: var(--sa-k-removed); }
+
+	.sa-older { margin-top: 2.5rem; }
+	.sa-older > summary { cursor: pointer; font-weight: 600; font-size: var(--sl-text-lg); color: var(--sl-color-white); }
+	.sa-older > summary span { margin-left: 0.5rem; font-weight: 400; font-size: var(--sl-text-sm); color: var(--sl-color-gray-3); }
+
+	@media (max-width: 40rem) {
+		.sa-rel { padding-inline: 1rem; }
+		.sa-items > li { grid-template-columns: 1fr; gap: 0.3rem; }
+		.sa-rel__more { margin-left: 0; width: 100%; }
+	}
+	.sa-unreleased {
+		padding: 0.1rem 0.6rem; border-radius: 999px; font-size: var(--sl-text-xs); font-weight: 600;
+		color: var(--sl-color-accent-high); background: var(--sl-color-accent-low);
+		border: 1px dashed color-mix(in srgb, var(--sl-color-accent) 55%, transparent);
+	}
+</style>

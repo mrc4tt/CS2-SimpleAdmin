@@ -1,0 +1,29 @@
+---
+title: Commands
+description: Every CS2-SimpleAdmin command with its permission flag, usage and aliases. Generated from the plugin source.
+sidebar:
+  order: 1
+tableOfContents: false
+---
+
+import CommandReference from '../../../components/CommandReference.astro';
+
+Generated from the plugin source at build time: the command list and default aliases from
+`Commands/RegisterCommands.cs`, usage and flags from each handler's `[CommandHelper]` and
+`[RequiresPermissions]` attributes. Run any command in chat as `!ban` or `/ban` (CounterStrikeSharp
+turns `css_ban` into `!ban`), or as `css_ban` in the console.
+
+**Targets.** Commands that take `<#userid or name>` accept `#` plus the user id from `status`,
+part of a player name, or a group: `@all`, `@ct`, `@t`, `@spec`, `@alive`, `@dead`, `@bots`,
+`@human`, `@me`, `@!me`. With `DisableDangerousCommands` on (the default), bans, warnings, kicks and
+comm penalties refuse a target that matches more than one player.
+
+**Durations.** Minutes as a plain number (`30`), `0` for permanent, or with units: `m` minutes,
+`h` hours, `d` days, `w` weeks, `mo` months (30 days), `y` years, for example `1d` or `2w`. In game,
+a ban or comm penalty without a time opens the duration menu (`ShowBanMenuIfNoTime`).
+
+**Aliases.** Every core command can be renamed or given more names in
+`configs/plugins/CS2-SimpleAdmin/Commands.json`. The plugin writes it on first start with the
+defaults below and adds new commands to it after an update.
+
+<CommandReference />

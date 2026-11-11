@@ -1,0 +1,41 @@
+---
+title: Updating
+description: Updating CS2-SimpleAdmin to a new release, and what happens to your config and database.
+sidebar:
+  order: 4
+---
+
+import { download, zipName } from '../../../data/plugin';
+import ReleaseCheck from '../../../components/ReleaseCheck.astro';
+
+The plugin tells you when you are behind: with `EnableUpdateCheck` on (the default) it compares its
+version with the fork's `main` branch on start and logs
+`Plugin is outdated! Check https://github.com/mrc4tt/CS2-SimpleAdmin/releases`.
+
+## Steps
+
+1. Read [What's new](/whats-new/) for the releases since yours.
+2. On SQLite, run `css_sqlbackup` first. On MySQL, take a `mysqldump`.
+3. Stop the server, or be ready to restart it.
+4. Download <a href={download} data-sa-download data-sa-version-text><code>{zipName}</code></a> and
+   extract it into `game/csgo/addons/` over the old files, the same way as the
+   [first install](/getting-started/installation/). The zip has no `configs/` folder, so your
+   settings are not touched.
+5. Start the server.
+
+<ReleaseCheck />
+
+## What happens to your files
+
+- **Database:** new migrations run on the first start and are recorded in `sa_migrations`. They
+  are embedded in the DLL too, so even a DLL-only update applies them.
+- **`CS2-SimpleAdmin.json`:** your values are kept. If the config layout version changed, the
+  plugin writes the new `ConfigVersion` into the file. New options are **not** added to the file;
+  they use their default until you add them. [Config options](/reference/configuration/) lists
+  every option with its default, and its [default file](/reference/configuration/#default-file)
+  shows the full current layout.
+- **`Commands.json`:** new commands are added automatically with their default name, and a line
+  `Adding new command ... to Commands.json` is logged. Your own aliases stay.
+- **CS2MenuManager:** the zip carries the menu library version it was built with; extracting it
+  updates that too.
+

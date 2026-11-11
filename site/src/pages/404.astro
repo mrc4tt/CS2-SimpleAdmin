@@ -1,0 +1,6 @@
+---
+// Our own 404 page (Starlight's is turned off with disable404Route): served by nginx as /404.html.
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+---
+
+<StarlightPage frontmatter={{ title: 'Page not found', template: 'splash', pagefind: false, editUrl: false, lastUpdated: false, hero: { title: 'Page not found', tagline: 'That page does not exist (any more). Try the search above, or start from one of these.', actions: [{ text: 'Home', link: '/', variant: 'primary' }, { text: 'Commands', link: '/reference/commands/', variant: 'secondary' }, { text: 'Installation', link: '/getting-started/installation/', variant: 'minimal' }] } }} />

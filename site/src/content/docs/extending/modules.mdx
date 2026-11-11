@@ -1,0 +1,149 @@
+---
+title: Modules
+description: What CS2-SimpleAdmin modules are, which ones ship, and how to write your own.
+sidebar:
+  order: 1
+---
+
+import Modules from '../../../components/Modules.astro';
+import { api } from '../../../data/api.mjs';
+
+export const capability = api().capability;
+
+A **module** is an ordinary CounterStrikeSharp plugin that talks to CS2-SimpleAdmin through its
+public API (`shared/CS2-SimpleAdminApi/`). Modules add commands, put their own categories into the
+admin menu, react to bans and mutes, or issue penalties themselves, without touching the plugin.
+Each module is installed, configured and reloaded on its own, in its own
+`plugins/<ModuleName>/` folder.
+
+## Modules in the repository
+
+The release zip contains the ones marked **in the release zip**; the others are kept in
+[`Modules/`](https://github.com/mrc4tt/CS2-SimpleAdmin/tree/main/Modules) as source, to build
+yourself. Generated from the `Modules/` folder at build time.
+
+<Modules />
+
+To leave a shipped module out, delete its folder under `addons/counterstrikesharp/plugins/`. How to
+use the two shipped modules is in [Fun commands and stealth](/guides/fun-and-stealth/).
+
+## Writing a module
+
+The [Fun Commands module](https://github.com/mrc4tt/CS2-SimpleAdmin/tree/main/Modules/CS2-SimpleAdmin_FunCommands)
+is the reference: commands from config, menu categories, per-player translations and clean
+unloading. The longer guide is
+[`Modules/MODULE_DEVELOPMENT.md`](https://github.com/mrc4tt/CS2-SimpleAdmin/blob/main/Modules/MODULE_DEVELOPMENT.md).
+
+### 1. Reference the API
+
+Reference `CS2-SimpleAdminApi.dll` (from the release zip's `shared/CS2-SimpleAdminApi/` or a build
+of [`CS2-SimpleAdminApi/`](https://github.com/mrc4tt/CS2-SimpleAdmin/tree/main/CS2-SimpleAdminApi))
+as a compile-time reference, the way the modules in the repository do:
+
+```xml
+<ItemGroup>
+  <PackageReference Include="CounterStrikeSharp.API" Version="1.0.369" />
+  <Reference Include="CS2-SimpleAdminApi">
+    <HintPath>CS2-SimpleAdminApi.dll</HintPath>
+  </Reference>
+</ItemGroup>
+```
+
+Do not copy the DLL into your module's folder: the API types must come from
+`shared/CS2-SimpleAdminApi/`, where the release installs them.
+
+### 2. Get the API in OnAllPluginsLoaded
+
+The API is a CounterStrikeSharp plugin capability named <code>{capability}</code>:
+
+```csharp
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Capabilities;
+using CS2_SimpleAdminApi;
+using Microsoft.Extensions.Logging;
+
+public class MyModule : BasePlugin
+{
+    public override string ModuleName => "My SimpleAdmin module";
+    public override string ModuleVersion => "1.0.0";
+
+    private ICS2_SimpleAdminApi? _api;
+    private readonly PluginCapability<ICS2_SimpleAdminApi> _capability = new("simpleadmin:api");
+
+    public override void OnAllPluginsLoaded(bool hotReload)
+    {
+        _api = _capability.Get();
+        if (_api == null)
+        {
+            Logger.LogError("CS2-SimpleAdmin API not found");
+            return;
+        }
+
+        _api.OnPlayerPenaltied += OnPlayerPenaltied;
+        _api.OnSimpleAdminReady += RegisterMenus; // after SimpleAdmin has loaded its data
+        RegisterMenus();                          // and right away, for hot reloads
+    }
+
+    private void OnPlayerPenaltied(PlayerInfo player, PlayerInfo? admin, PenaltyType type,
+        string reason, int duration, int? penaltyId, int? serverId)
+    {
+        if (type == PenaltyType.Ban)
+            Logger.LogInformation($"{player.Name} was banned for {duration} min: {reason}");
+    }
+
+    private void RegisterMenus() { /* see below */ }
+
+    public override void Unload(bool hotReload)
+    {
+        if (_api == null) return;
+        _api.OnPlayerPenaltied -= OnPlayerPenaltied;
+        _api.OnSimpleAdminReady -= RegisterMenus;
+    }
+}
+```
+
+### 3. Commands
+
+Register commands through the API, as the Fun Commands module does, and unregister them in
+`Unload`. Permissions come from the usual CounterStrikeSharp attributes on the handler:
+
+```csharp
+[CommandHelper(1, "<#userid or name>")]
+[RequiresPermissions("@css/slay")]
+private void OnSlapAllCommand(CCSPlayerController? caller, CommandInfo command)
+{
+    var targets = _api!.GetTarget(command);   // SimpleAdmin's target parsing and messages
+    if (targets == null) return;
+    // ...
+    _api.LogCommand(caller, command);         // admin log and Discord log
+}
+
+// in OnAllPluginsLoaded:   _api.RegisterCommand("css_slapall", "Slap players", OnSlapAllCommand);
+// in Unload:               _api.UnRegisterCommand("css_slapall");
+```
+
+### 4. Menus
+
+Add a category to the admin menu and menus inside it. The `MenuContext` overloads pass the title
+and category to your factory, so the back button works without repeating them:
+
+```csharp
+private void RegisterMenus()
+{
+    _api!.RegisterMenuCategory("mymodule", "My module", "@css/generic");
+    _api.RegisterMenu("mymodule", "slap", "Slap a player", CreateSlapMenu, "@css/slay");
+}
+
+private object CreateSlapMenu(CCSPlayerController admin, MenuContext context) =>
+    _api!.CreateMenuWithPlayers(context, admin,
+        player => player.IsValid && admin.CanTarget(player),
+        (adminPlayer, target) => { /* act on target */ });
+
+// in Unload: _api.UnregisterMenu("mymodule", "slap");
+```
+
+For translated menu and activity texts, pass your module's `Localizer` to the overloads that take
+`moduleLocalizer`; each player then sees your strings in their own language
+([Module translations](/extending/translations/) shows the full pattern).
+
+Every member, with its signature and documentation, is in the [API reference](/extending/api/).

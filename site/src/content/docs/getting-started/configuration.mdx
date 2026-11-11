@@ -1,0 +1,119 @@
+---
+title: Configuration
+description: The CS2-SimpleAdmin config file explained, plus admins, groups and command aliases.
+sidebar:
+  order: 2
+---
+
+import { Code } from '@astrojs/starlight/components';
+import { configReference } from '../../../data/config.mjs';
+
+export const cfg = configReference('CS2-SimpleAdmin/Config.cs', 'CS2_SimpleAdminConfig');
+export const flagsDefault = cfg.defaults.MenuConfig.AdminFlags;
+
+## Files
+
+All paths are under `game/csgo/addons/counterstrikesharp/`.
+
+| File | What it is |
+| --- | --- |
+| `configs/plugins/CS2-SimpleAdmin/CS2-SimpleAdmin.json` | The settings. Written with defaults on first start. |
+| `configs/plugins/CS2-SimpleAdmin/Commands.json` | Command names and aliases. See [Command aliases](#command-aliases). |
+| `plugins/CS2-SimpleAdmin/cs2-simpleadmin.sqlite` | The SQLite database (when SQLite is used), with `-wal` and `-shm` files next to it. |
+| `plugins/CS2-SimpleAdmin/data/admins.json`, `groups.json` | Written by the plugin from the database each time admins are reloaded, then loaded into CounterStrikeSharp. Do not edit: changes are overwritten. |
+| `plugins/CS2-SimpleAdmin/backups/` | SQLite backups made with `css_sqlbackup`. |
+| `plugins/CS2-SimpleAdmin/admin_help.txt` | The text `css_adminhelp` shows. |
+
+Changes to `CS2-SimpleAdmin.json` are read when the plugin loads: restart the server or run
+`css_plugins reload CS2-SimpleAdmin`. Every option, with its type and default, is in
+[Config options](/reference/configuration/).
+
+## The settings that matter first
+
+The file has five parts. A fresh server usually only needs a few changes:
+
+- **`DatabaseConfig`**: SQLite needs nothing. For MySQL set `DatabaseType` to `MySQL` and fill in
+  host, port, user, password and database name. See [Database](/getting-started/database/).
+- **`MultiServerMode`** (on by default): penalties apply on every server that uses the same database.
+  Turn it off if the servers share a database but should keep separate ban lists.
+- **`OtherSettings.ShowActivityType`**: who sees "ADMIN banned Player" in chat, and whether players
+  see the admin's name (`2`, the default) or just "ADMIN" (`1`).
+- **`OtherSettings.TimeMode`**: `1` (default) lets penalty time run in real time; `0` counts it
+  only while the player is on the server.
+- **`Discord`**: a webhook for the command log, and one per penalty type for ban, mute, gag,
+  silence and warning embeds.
+- **`MenuConfig`**: the durations and reasons the menus offer, and the menu style
+  (`selectable` lets each player pick with `css_menutype`).
+- **`Timezone`**: only used with MySQL, for the times stored with penalties.
+
+### Warning thresholds
+
+`WarnThreshold` runs a server command when a player reaches a number of active warnings.
+`USERID` and `STEAMID64` are replaced with the warned player. The default:
+
+<Code lang="json" code={JSON.stringify({ WarnThreshold: cfg.defaults.WarnThreshold }, null, 2)} />
+
+At or above the highest number, its command runs again for every new warning. An empty object
+turns thresholds off.
+
+### Menu entries for your own commands
+
+`CustomServerCommands` adds entries to the admin menu's custom commands list:
+
+```json
+"CustomServerCommands": [
+  { "Flag": "@css/generic", "DisplayName": "Restart round", "Command": "mp_restartgame 1", "ExecuteOnClient": false }
+]
+```
+
+`ExecuteOnClient: true` runs the command as the admin who picked it instead of on the server.
+`DefaultMaps` (map names) and `WorkshopMaps` (name to workshop id) fill the map change menu.
+
+## Admins and groups
+
+Admins and groups live in the database (`sa_admins`, `sa_groups` and their flag tables), so every
+server on the same database can use them. The plugin turns them into CounterStrikeSharp admins:
+commands and menus then check the usual CounterStrikeSharp flags and immunity.
+
+| Command | Does |
+| --- | --- |
+| `css_addadmin <steamid64> <name> <flags or #group> <immunity> [minutes] [-g]` | Adds an admin. Several flags or groups separated by commas. `minutes` makes it temporary, `-g` makes it global on every server. |
+| `css_deladmin <steamid64>` | Removes an admin. |
+| `css_addgroup <#name> <flags> <immunity> [-g]` | Adds a group. The name must start with `#`. |
+| `css_delgroup <#name>` | Removes a group. |
+| `css_reloadadmins` | Reloads admins and groups from the database. |
+
+All of them need `@css/root`, and they work from the server console. Admins whose time ran out are
+removed automatically. With `ReloadAdminsEveryMapChange` the list is also reloaded on every map.
+
+**Immunity:** an admin cannot target a player with higher immunity. **Flags** are
+CounterStrikeSharp flags. The flags the admin menu offers when adding an admin (from
+`MenuConfig.AdminFlags`):
+
+<table>
+	<thead><tr><th>Flag</th><th>Name in the menu</th></tr></thead>
+	<tbody>{flagsDefault.map((f) => <tr><td><code>{f.flag}</code></td><td>{f.name}</td></tr>)}</tbody>
+</table>
+
+The code also checks `@css/permban` and `@css/permmute`: without them an admin cannot give
+permanent penalties or ones longer than `MaxBanDuration` / `MaxMuteDuration`. Fun commands from
+the module use `@css/cheats` and `@css/slay`. [Commands](/reference/commands/#by-flag) lists which
+flag each command needs.
+
+## Command aliases
+
+`Commands.json` maps each command to the names it answers to. Add names to the list, or remove the
+default to rename a command:
+
+```json
+{
+  "commands": {
+    "css_ban": { "aliases": ["css_ban", "css_b"] },
+    "css_rr": { "aliases": ["css_rr", "css_rg", "css_restart", "css_restartgame"] }
+  }
+}
+```
+
+An empty list disables the command. New commands from an update are added to the file
+automatically. The Fun Commands module has its own name lists in its config
+(`configs/plugins/CS2-SimpleAdmin_FunCommands/CS2-SimpleAdmin_FunCommands.json`).

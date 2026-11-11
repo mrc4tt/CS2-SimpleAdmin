@@ -1,0 +1,87 @@
+---
+// CS2-SimpleAdmin.json, generated from CS2-SimpleAdmin/Config.cs at build time: each option with its
+// type and default (src/data/config.mjs) and the hand-written note (src/data/config-notes.mjs).
+import { Code } from '@astrojs/starlight/components';
+import { configReference } from '../data/config.mjs';
+import { notes } from '../data/config-notes.mjs';
+import { inline } from '../data/changelog';
+
+const { defaults, sections } = configReference('CS2-SimpleAdmin/Config.cs', 'CS2_SimpleAdminConfig');
+const paths = new Set(sections.flatMap((s) => s.options.map((o) => o.path)));
+for (const p of paths) if (!(p in notes)) console.warn(`[config] ${p}: no description in src/data/config-notes.mjs`);
+for (const p of Object.keys(notes)) if (!paths.has(p)) console.warn(`[config] ${p}: described in config-notes.mjs but not in Config.cs`);
+
+const sectionId = (key: string) => (key || 'general').toLowerCase();
+const optionId = (path: string) => path.toLowerCase().replace(/\./g, '-');
+const json = (v: unknown) => JSON.stringify(v, null, 2);
+const short = (v: unknown) => {
+	const s = JSON.stringify(v);
+	return s.length <= 40 ? s : null;
+};
+const sectionLead: Record<string, string> = {
+	'': 'Top-level options.',
+	DatabaseConfig: 'Which database to use and how to reach it. See [Database](/getting-started/database/).',
+	OtherSettings: 'Behaviour of commands, bans and messages.',
+	Discord: 'Discord webhooks. Every webhook is optional; an empty value turns that message off.',
+	MenuConfig: 'What the admin menus offer.',
+};
+---
+
+<div class="sa-cfg">
+	<ul class="sa-chips not-content">
+		{sections.map((s) => <li><a href={`#${sectionId(s.key)}`}>{s.title} <span>{s.options.length}</span></a></li>)}
+		<li><a href="#default-file">Default file</a></li>
+	</ul>
+
+	{sections.map((s) => (
+		<section id={sectionId(s.key)} class="sa-cfg__sec">
+			<h2>{s.title}</h2>
+			{sectionLead[s.key] && <p set:html={inline(sectionLead[s.key])} />}
+			<div class="sa-opts">
+				{s.options.map((o) => {
+					const sv = short(o.default);
+					return (
+						<div class="sa-opt" id={optionId(o.path)}>
+							<div class="sa-opt__head">
+								<a href={`#${optionId(o.path)}`}><code>{o.key}</code></a>
+								<span class="sa-pill">{o.type}</span>
+								{sv !== null && <span class="sa-default">default <code>{sv}</code></span>}
+							</div>
+							{notes[o.path] && <p set:html={inline(notes[o.path])} />}
+							{sv === null && (
+								<details class="sa-def">
+									<summary>Default value</summary>
+									<pre><code>{json(o.default)}</code></pre>
+								</details>
+							)}
+						</div>
+					);
+				})}
+			</div>
+		</section>
+	))}
+
+	<section id="default-file" class="sa-cfg__sec">
+		<h2>Default file</h2>
+		<p>What the plugin writes on first start, built from the same source. Copy it as a starting point; you only need the keys you change.</p>
+		<Code code={json(defaults)} lang="json" title="configs/plugins/CS2-SimpleAdmin/CS2-SimpleAdmin.json" />
+	</section>
+</div>
+
+<style>
+	.sa-cfg__sec { margin-top: 2.5rem; scroll-margin-top: calc(var(--sl-nav-height) + 1.5rem); }
+	.sa-opts { margin-top: 1rem; border: 1px solid var(--sa-line); border-radius: 0.75rem; overflow: hidden; }
+	.sa-opt { margin: 0 !important; padding: 0.9rem 1.1rem; border-top: 1px solid var(--sa-line); background: var(--sa-surface); scroll-margin-top: calc(var(--sl-nav-height) + 1.5rem); }
+	.sa-opt:first-child { border-top: 0; }
+	.sa-opt:target { background: var(--sl-color-accent-low); }
+	.sa-opt__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.7rem; }
+	.sa-opt__head > a { text-decoration: none; }
+	.sa-opt__head > a code { background: none; border: 0; padding: 0; font-weight: 700; color: var(--sl-color-white); overflow-wrap: anywhere; }
+	.sa-default { font-size: var(--sl-text-xs); color: var(--sl-color-gray-3); }
+	.sa-default code { font-size: var(--sl-text-xs); overflow-wrap: anywhere; }
+	.sa-opt p { margin: 0.45rem 0 0; font-size: var(--sl-text-sm); color: var(--sl-color-gray-2); }
+	.sa-def { margin-top: 0.5rem; font-size: var(--sl-text-sm); }
+	.sa-def summary { cursor: pointer; color: var(--sl-color-gray-3); }
+	.sa-def pre { margin: 0.5rem 0 0; padding: 0.6rem 0.8rem; max-height: 20rem; overflow: auto; border-radius: 0.5rem; background: var(--sl-color-black); border: 1px solid var(--sa-line); font-size: var(--sl-text-xs); }
+	.sa-def pre code { background: none; border: 0; padding: 0; }
+</style>
