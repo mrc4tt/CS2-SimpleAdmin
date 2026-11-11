@@ -6,7 +6,8 @@ Releases are tagged `vX.Y.Z` (older releases used `build-X.Y.Z`).
 
 ## [1.9.7] - 2026-11-11
 
-Documentation for the plugin is now at https://simpleadmin.miksen.me.
+### Added
+- Documentation for the plugin at https://simpleadmin.miksen.me.
 
 ### Changed
 - A penalty time that cannot be read (`5x`, or a reason where the time should be) is refused with "Invalid time" instead of becoming permanent. Write `css_warn #4 0 Spamming`, not `css_warn #4 Spamming`.
