@@ -36,8 +36,8 @@ public partial class CS2_SimpleAdmin_FunCommands
 
         // Remove player from god mode, speed, and gravity tracking on death
         GodPlayers.Remove(player.Slot);
-        SpeedPlayers.Remove(player);
-        GravityPlayers.Remove(player);
+        SpeedPlayers.Remove(player.Slot);
+        GravityPlayers.Remove(player.Slot);
 
         return HookResult.Continue;
     }
@@ -61,8 +61,8 @@ public partial class CS2_SimpleAdmin_FunCommands
 
         // Clean up player from all tracking when they disconnect
         GodPlayers.Remove(player.Slot);
-        SpeedPlayers.Remove(player);
-        GravityPlayers.Remove(player);
+        SpeedPlayers.Remove(player.Slot);
+        GravityPlayers.Remove(player.Slot);
 
         return HookResult.Continue;
     }
