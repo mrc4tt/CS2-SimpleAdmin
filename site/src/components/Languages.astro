@@ -1,0 +1,36 @@
+---
+// Translations, generated from the lang/ folders at build time (src/data/languages.mjs).
+import { languages } from '../data/languages.mjs';
+
+const repo = 'https://github.com/mrc4tt/CS2-SimpleAdmin';
+const sets = languages();
+---
+
+{sets.map((set) => (
+	<section class="sa-lang" id={set.id}>
+		<h2>{set.title}</h2>
+		<p>{set.langs.length} languages in <a href={`${repo}/tree/main/${set.dir}`}><code>{set.dir}/</code></a>, {set.total} messages each in English.</p>
+		<table>
+			<thead><tr><th>Language</th><th>File</th><th>Messages</th></tr></thead>
+			<tbody>
+				{set.langs.map((l) => (
+					<tr>
+						<td>{l.name}</td>
+						<td><a href={`${repo}/blob/main/${l.file}`}><code>{l.code}.json</code></a></td>
+						<td>
+							{l.missing.length === 0
+								? <span class="sa-ok">{l.keys} / {set.total}</span>
+								: <span class="sa-miss" title={`Missing: ${l.missing.join(', ')}`}>{l.keys} / {set.total}, missing {l.missing.map((k, i) => <>{i > 0 && ', '}<code>{k}</code></>)}</span>}
+						</td>
+					</tr>
+				))}
+			</tbody>
+		</table>
+	</section>
+))}
+
+<style>
+	.sa-lang { margin-top: 2rem; }
+	.sa-ok { color: var(--sa-k-added); font-variant-numeric: tabular-nums; }
+	.sa-miss { color: var(--sa-k-fixed); font-variant-numeric: tabular-nums; }
+</style>

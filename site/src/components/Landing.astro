@@ -1,0 +1,222 @@
+---
+// The landing page (index.mdx). Version and numbers come from the plugin source at build time
+// (src/data/plugin.ts); the chat lines in the hero are the plugin's own en.json strings.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { version, stats, repo, upstream, download, zipName, requirements } from '../data/plugin';
+import { repoRoot } from '../data/version.mjs';
+
+const en = JSON.parse(readFileSync(join(repoRoot(), 'CS2-SimpleAdmin/lang/en.json'), 'utf-8'));
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// "{lightred}{0}{default} banned ..." -> HTML with the colour tags as spans and {n} filled in.
+function chat(key: string, args: string[]) {
+	let html = esc(String(en[key] ?? key)).replace(/\{(\d+)\}/g, (_, i) => esc(args[Number(i)] ?? ''));
+	let open = 0;
+	html = html.replace(/\{(\w+)\}/g, (_, c) => {
+		const close = '</span>'.repeat(open);
+		if (c === 'default') { open = 0; return close; }
+		open = 1;
+		return `${close}<span class="c-${c}">`;
+	});
+	return html + '</span>'.repeat(open);
+}
+const prefix = chat('sa_prefix', []);
+const lines = [
+	{ cmd: 'css_ban #7 1d Wallhack', out: chat('sa_admin_ban_message_time', ['ADMIN', 'Player', 'Wallhack', '1440']) },
+	{ cmd: 'css_gag Spammer 30m Spam', out: chat('sa_admin_gag_message_time', ['ADMIN', 'Spammer', 'Spam', '30']) },
+	{ cmd: 'css_kick #9 AFK', out: chat('sa_admin_kick_message', ['ADMIN', 'Idler', 'AFK']) },
+];
+
+const feats = [
+	['gavel', 'Bans that stick', 'Ban by player, SteamID64 or IP, offline bans, ban checks on connect by SteamID and IP, and alternate accounts caught by shared IPs.', 'reference/commands/#bans'],
+	['mic', 'Gags, mutes and silences', 'Chat, voice or both, timed or permanent, in real time or play time. Players can check their own penalties with css_penalties.', 'reference/commands/#comms'],
+	['menu', 'Admin menu', 'css_admin opens menus for players, bans, maps, custom commands and plugins, in the menu style each player picks.', 'reference/commands/#admin'],
+	['db', 'SQLite or MySQL', 'SQLite with WAL and in-game backups for one server; MySQL to share one ban list across many. Migrations run on load.', 'getting-started/database/'],
+	['warn', 'Warnings with thresholds', 'Warnings expire like any penalty, and a warning count can trigger any command, for example a ban at the fourth warning.', 'reference/configuration/#warnthreshold'],
+	['discord', 'Discord logs', 'Every admin command to a log webhook, and a separate embed per penalty type with your own colours and images.', 'reference/configuration/#discord'],
+	['users', 'Admins and groups', 'Admins and groups in the database with flags, immunity and expiry, per server or global, loaded into CounterStrikeSharp.', 'getting-started/configuration/#admins-and-groups'],
+	['plug', 'Modules and API', 'Other plugins add commands, menus and penalty hooks through the public API. Fun commands and stealth ship as modules.', 'extending/modules/'],
+];
+const icons: Record<string, string> = {
+	gavel: 'M14 3l7 7M11.5 5.5l7 7M9 8l7 7-3 3-7-7zM6 11 3 14M2 22h12',
+	mic: 'M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3ZM19 11a7 7 0 0 1-14 0M12 18v3M3 3l18 18',
+	menu: 'M4 5h16v14H4zM8 9h8M8 12h8M8 15h5',
+	db: 'M12 8c4.4 0 8-1.3 8-3s-3.6-3-8-3-8 1.3-8 3 3.6 3 8 3ZM4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+	warn: 'M12 3 2 20h20L12 3ZM12 10v4M12 17h.01',
+	discord: 'M21 12a8 8 0 0 1-11.8 7L4 20l1.1-4.6A8 8 0 1 1 21 12ZM9 12h.01M15 12h.01',
+	users: 'M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.9M16 4.1a3 3 0 0 1 0 5.8',
+	plug: 'M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0V7ZM12 17v5',
+};
+const statRows = [
+	[stats.commands, 'commands', 'reference/commands/'],
+	[stats.settings, 'config options', 'reference/configuration/'],
+	[stats.languages, 'languages', 'reference/languages/'],
+	[stats.modules, 'modules', 'extending/modules/'],
+] as const;
+const steps = [
+	['Install CounterStrikeSharp', `with Metamod, on a build that runs .NET ${requirements.dotnet}.`],
+	['Extract the zip', `${zipName} into game/csgo/addons/. CS2MenuManager is included.`],
+	['Start the server once', 'CS2-SimpleAdmin.json is written. SQLite works with no setup.'],
+	['Add yourself as admin', 'From the server console: css_addadmin <steamid64> <name> @css/root 100'],
+];
+---
+
+<div class="sa-landing not-content" data-sa-built={version}>
+	<section class="sa-hero">
+		<div>
+			<a class="sa-badge" href="/whats-new/"><span class="sa-dot"></span>Latest release <strong data-sa-version>{version}</strong></a>
+			<h1 class="sa-h1">CS2 admin tools,<br /><span>simple to run.</span></h1>
+			<p class="sa-lead">
+				Bans, gags, mutes, warnings, admin menus and Discord logs for Counter-Strike 2 servers running CounterStrikeSharp. SQLite or MySQL, one server or a whole network.
+			</p>
+			<div class="sa-actions">
+				<a class="sa-btn sa-btn--primary" href={download} data-sa-download>
+					<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+					Download <span data-sa-version>{version}</span>
+				</a>
+				<a class="sa-btn" href="/getting-started/installation/">Get started</a>
+				<a class="sa-btn" href="/reference/commands/">Commands</a>
+			</div>
+			<p class="sa-small"><a href="/changelog/">Changelog</a> · <a href={`${repo}/releases`}>All releases</a> · <a href={`${repo}/issues`}>Report an issue</a></p>
+		</div>
+		<div class="sa-hero__panel" aria-hidden="true">
+			<div class="sa-glow"></div>
+			<div class="sa-console">
+				<div class="sa-console__bar"><i></i><i></i><i></i><span>server console</span></div>
+				{lines.map((l) => (
+					<div class="sa-console__row">
+						<div class="sa-console__cmd"><b>&gt;</b> {l.cmd}</div>
+						<div class="sa-console__out"><Fragment set:html={prefix + l.out} /></div>
+					</div>
+				))}
+			</div>
+			<code class="sa-caption">ShowActivityType 1: players see ADMIN</code>
+		</div>
+	</section>
+
+	<section class="sa-stats">
+		{statRows.map(([n, label, href]) => <a href={`/${href}`}><b>{n}</b><span>{label}</span></a>)}
+	</section>
+
+	<section class="sa-section">
+		<h2 class="sa-h2">Everything an admin team needs</h2>
+		<p class="sa-sublead">From a single community server to a network that shares one ban list.</p>
+		<div class="sa-feats">
+			{feats.map(([icon, title, text, link]) => (
+				<a class="sa-feat" href={`/${link}`}>
+					<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d={icons[icon]} fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+					<h3>{title}</h3>
+					<p>{text}</p>
+					<span class="sa-arrow">→</span>
+				</a>
+			))}
+		</div>
+	</section>
+
+	<section class="sa-section">
+		<h2 class="sa-h2">Up in four steps</h2>
+		<ol class="sa-steps" data-sa-version-text>
+			{steps.map(([title, text]) => <li><strong>{title}</strong><span>{text}</span></li>)}
+		</ol>
+		<p><a href="/getting-started/installation/">Full steps in Installation →</a></p>
+	</section>
+
+	<section class="sa-credits">
+		<p>
+			<strong>A maintained fork.</strong> CS2-SimpleAdmin was created by <a href="https://github.com/daffyyyy">daffyy</a>{' '}
+			(<a href={upstream}>daffyyyy/CS2-SimpleAdmin</a>), building on <a href="https://github.com/Hackmastr/css-basic-admin/">css-basic-admin</a> by Hackmastr.
+			This site documents the fork at <a href={repo}>mrc4tt/CS2-SimpleAdmin</a>, maintained by Miksen, with its own releases. Licensed under GPL-3.0.
+		</p>
+	</section>
+</div>
+
+<style>
+	.sa-landing { --gap: clamp(3rem, 7vw, 6rem); padding-bottom: 3rem; }
+	.sa-landing a { text-decoration: none; }
+	.sa-hero {
+		display: grid; gap: 3rem; align-items: center; padding: clamp(1.5rem, 5vw, 4rem) 0 var(--gap);
+		grid-template-columns: minmax(0, 1fr);
+	}
+	@media (min-width: 60rem) { .sa-hero { grid-template-columns: minmax(0, 7fr) minmax(0, 6fr); } }
+	.sa-badge {
+		display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.85rem; border-radius: 2rem;
+		font-size: var(--sl-text-sm); color: var(--sl-color-gray-2); background: var(--sa-surface); border: 1px solid var(--sa-line);
+	}
+	.sa-badge strong { color: var(--sl-color-white); }
+	.sa-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--sa-green); box-shadow: 0 0 10px var(--sa-green); }
+	.sa-h1 {
+		margin: 1.2rem 0 1rem; font-size: clamp(2.4rem, 6vw, 4.3rem); line-height: 1.04; font-weight: 850;
+		letter-spacing: -0.045em; color: var(--sl-color-white);
+	}
+	.sa-h1 span { background: var(--sa-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+	.sa-lead { font-size: clamp(1.05rem, 1.6vw, 1.25rem); line-height: 1.6; color: var(--sl-color-gray-2); max-width: 38rem; margin: 0 0 1.8rem; }
+	.sa-actions { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+	.sa-small { margin-top: 1.2rem; font-size: var(--sl-text-xs); color: var(--sl-color-gray-3); }
+	.sa-small a { color: var(--sl-color-gray-3); }
+	.sa-small a:hover { color: var(--sl-color-accent); }
+
+	/* The console mock-up */
+	.sa-hero__panel { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.8rem; overflow: clip; padding: 2rem 0; min-width: 0; }
+	.sa-glow { position: absolute; inset: 15% 5%; background: radial-gradient(closest-side, color-mix(in srgb, var(--sa-teal) 32%, transparent), transparent); filter: blur(30px); }
+	.sa-console {
+		position: relative; width: min(100%, 30rem); border-radius: 0.9rem; overflow: hidden;
+		font-family: var(--sl-font-mono); font-size: 0.8rem; line-height: 1.6; color: #dfe4ea;
+		background: linear-gradient(180deg, #1d2128, #14171c); border: 1px solid #333944; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.6);
+		transform: perspective(900px) rotateY(-7deg) rotateX(3deg); transition: transform 0.4s;
+	}
+	.sa-console:hover { transform: none; }
+	.sa-console__bar { display: flex; align-items: center; gap: 0.35rem; padding: 0.55rem 0.8rem; background: #262b33; border-bottom: 1px solid #333944; }
+	.sa-console__bar i { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #4a515d; }
+	.sa-console__bar span { margin-left: 0.5rem; font-size: 0.72rem; color: #8b93a0; }
+	.sa-console__row { padding: 0.6rem 0.9rem; border-bottom: 1px solid #262b33; }
+	.sa-console__row:last-child { border-bottom: 0; }
+	.sa-console__cmd { color: #9ee7f0; overflow-wrap: anywhere; }
+	.sa-console__cmd b { color: var(--sa-teal); margin-right: 0.3rem; }
+	.sa-console__out { color: #e8ebef; overflow-wrap: anywhere; }
+	.sa-console__out :global(.c-lightred) { color: #ff6b6b; }
+	.sa-console__out :global(.c-green), .sa-console__out :global(.c-lime) { color: #7be07b; }
+	.sa-caption { position: relative; font-size: var(--sl-text-xs); color: var(--sl-color-gray-3); background: none; border: 0; }
+	@media (prefers-reduced-motion: reduce) { .sa-console { transform: none; } }
+
+	.sa-stats { display: grid; gap: 0.8rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	@media (min-width: 45rem) { .sa-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+	.sa-stats a { display: flex; flex-direction: column; align-items: center; padding: 1.3rem 0.5rem; border-radius: 1rem; background: var(--sa-surface); border: 1px solid var(--sa-line); transition: border-color 0.18s; }
+	.sa-stats a:hover { border-color: var(--sa-teal); }
+	.sa-stats b { font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 850; letter-spacing: -0.04em; line-height: 1; background: var(--sa-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+	.sa-stats span { margin-top: 0.4rem; font-size: var(--sl-text-sm); color: var(--sl-color-gray-3); }
+
+	.sa-section { margin-top: var(--gap); }
+	.sa-h2 { margin: 0 0 0.5rem; font-size: clamp(1.7rem, 3.5vw, 2.4rem); font-weight: 800; letter-spacing: -0.035em; color: var(--sl-color-white); }
+	.sa-sublead { margin: 0 0 1.8rem; color: var(--sl-color-gray-2); font-size: 1.05rem; max-width: 40rem; }
+
+	.sa-feats { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+	@media (min-width: 40rem) { .sa-feats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+	@media (min-width: 72rem) { .sa-feats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+	.sa-feat {
+		position: relative; display: flex; flex-direction: column; gap: 0.5rem; padding: 1.4rem 1.3rem 2.6rem; border-radius: 1rem;
+		background: var(--sa-surface); border: 1px solid var(--sa-line); color: var(--sl-color-gray-2);
+		transition: transform 0.18s, border-color 0.18s, background 0.18s;
+	}
+	.sa-feat:hover { transform: translateY(-3px); border-color: var(--sa-teal); background: var(--sa-surface-2); }
+	.sa-feat svg { color: var(--sl-color-accent); }
+	.sa-feat h3 { margin: 0.3rem 0 0; font-size: 1.05rem; font-weight: 700; color: var(--sl-color-white); }
+	.sa-feat p { margin: 0; font-size: var(--sl-text-sm); line-height: 1.6; }
+	.sa-arrow { position: absolute; left: 1.3rem; bottom: 1rem; color: var(--sl-color-accent); transition: transform 0.18s; }
+	.sa-feat:hover .sa-arrow { transform: translateX(4px); }
+
+	.sa-steps { list-style: none; counter-reset: s; padding: 0; margin: 1.5rem 0; display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+	@media (min-width: 50rem) { .sa-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+	.sa-steps li { counter-increment: s; display: flex; flex-direction: column; gap: 0.3rem; padding: 1.2rem; border-radius: 1rem; background: var(--sa-surface); border: 1px solid var(--sa-line); color: var(--sl-color-gray-2); font-size: var(--sl-text-sm); overflow-wrap: anywhere; }
+	.sa-steps li::before { content: counter(s); width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: 50%; font-weight: 850; color: #04161b; background: var(--sa-grad); margin-bottom: 0.4rem; }
+	.sa-steps strong { color: var(--sl-color-white); font-size: 1rem; }
+
+	.sa-credits { margin-top: var(--gap); padding: 1.3rem 1.5rem; border-radius: 1rem; border: 1px solid var(--sa-line); background: var(--sa-surface); font-size: var(--sl-text-sm); color: var(--sl-color-gray-2); }
+	.sa-credits p { margin: 0; }
+	.sa-credits a { color: var(--sl-color-accent); }
+	.sa-credits strong { color: var(--sl-color-white); }
+</style>
+
+<script>
+	import { checkRelease } from '../scripts/release-check.js';
+	checkRelease();
+</script>

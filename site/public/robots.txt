@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://simpleadmin.miksen.me/sitemap-index.xml

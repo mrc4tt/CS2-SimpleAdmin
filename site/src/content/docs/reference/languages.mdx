@@ -1,0 +1,19 @@
+---
+title: Languages
+description: Translations shipped with CS2-SimpleAdmin and the Fun Commands module. Generated from the lang folders.
+sidebar:
+  order: 3
+tableOfContents: false
+---
+
+import Languages from '../../../components/Languages.astro';
+
+Messages are translated with CounterStrikeSharp's localizer. Each player sees their own language
+when it is available (set with `!lang` from CounterStrikeSharp core, for example `!lang de`);
+otherwise the server language set in CounterStrikeSharp's `core.json` is used.
+
+To fix or add a translation, copy `en.json`, translate the values (keep the `{0}` placeholders and
+colour tags like `{lightred}`) and open a pull request or an issue on GitHub. Table generated from
+the files at build time.
+
+<Languages />

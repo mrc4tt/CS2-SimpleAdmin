@@ -1,0 +1,149 @@
+---
+// Every command, generated from the source at build time (src/data/commands.mjs): grouped the way
+// the code groups them, with a search over names, aliases, flags and descriptions.
+import { commands, flags } from '../data/commands.mjs';
+import { inline } from '../data/changelog';
+
+const repo = 'https://github.com/mrc4tt/CS2-SimpleAdmin';
+const { groups, all } = commands();
+const flagList = flags();
+const who = { both: 'Console and players', client: 'Players only', server: 'Console only' } as Record<string, string>;
+const flagClass = (f: string) => (f === '@css/root' ? 'sa-flag sa-flag--root' : 'sa-flag');
+const src = (s: string) => {
+	const [file, line] = s.split(':');
+	return `${repo}/blob/main/${file}#L${line}`;
+};
+---
+
+<div class="sa-cmds">
+	<div class="sa-searchbar not-content">
+		<label class="sa-search">
+			<span class="sr-only">Search commands</span>
+			<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.39A8 8 0 1 1 10 2m0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12" /></svg>
+			<input type="search" placeholder={`Search ${all.length} commands, aliases or flags`} autocomplete="off" data-q />
+		</label>
+		<label>
+			<span class="sr-only">Filter by permission flag</span>
+			<select class="sa-select" data-flag>
+				<option value="">All flags</option>
+				{flagList.map((f) => <option value={f.flag}>{f.flag === '(none)' ? 'No flag' : f.flag} ({f.commands.length})</option>)}
+			</select>
+		</label>
+		<p class="sa-count" aria-live="polite" data-count></p>
+	</div>
+
+	<ul class="sa-chips not-content">
+		{groups.map((g) => <li><a href={`#${g.id}`}>{g.title} <span>{g.commands.length}</span></a></li>)}
+		<li><a href="#by-flag">By permission flag</a></li>
+	</ul>
+
+	{groups.map((g) => (
+		<section class="sa-group" id={g.id} data-group>
+			<h2>{g.title}</h2>
+			{g.id === 'fun' && (
+				<p class="sa-note">Registered by the <a href="/extending/modules/">Fun Commands module</a>, which ships in the release zip. The names come from the module's config, so they can be changed there.</p>
+			)}
+			{g.commands.map((c) => (
+				<article class="sa-cmd" id={c.name} data-cmd data-flags={c.permissions.join(' ') || '(none)'}
+					data-text={[c.name, ...c.aliases, ...c.permissions, c.usage, c.description].join(' ').toLowerCase()}>
+					<header>
+						<h3><a href={`#${c.name}`}><code>{c.name}</code></a></h3>
+						{c.permissions.length
+							? c.permissions.map((p) => <span class={flagClass(p)} title="Required permission">{p}</span>)
+							: <span class="sa-flag sa-flag--none" title="No permission needed">everyone</span>}
+						<span class="sa-pill">{who[c.who]}</span>
+					</header>
+					<pre class="sa-usage"><code>{c.name}{c.usage ? ` ${c.usage}` : ''}</code></pre>
+					{c.description && <p set:html={inline(c.description)} />}
+					<p class="sa-meta">
+						{c.aliases.length > 0 && <>Aliases: {c.aliases.map((a, i) => <>{i > 0 && ', '}<code>{a}</code></>)}<span class="sa-sep" /></>}
+						{c.minArgs > 0 && <>Needs at least {c.minArgs} argument{c.minArgs > 1 ? 's' : ''}<span class="sa-sep" /></>}
+						<a href={src(c.source)}>Source</a>
+					</p>
+				</article>
+			))}
+		</section>
+	))}
+
+	<p class="sa-empty" hidden data-empty>No command matches. Try a shorter word or another flag.</p>
+
+	<section class="sa-group" id="by-flag" data-static>
+		<h2>By permission flag</h2>
+		<p>The flag each command checks (its <code>[RequiresPermissions]</code> attribute). Flags and permission overrides come from CounterStrikeSharp's admin system, so a server can move a command to another flag in <code>configs/admin_overrides.json</code>.</p>
+		<table>
+			<thead><tr><th>Flag</th><th>Commands</th></tr></thead>
+			<tbody>
+				{flagList.map((f) => (
+					<tr>
+						<td>{f.flag === '(none)' ? <span class="sa-flag sa-flag--none">no flag</span> : <span class={flagClass(f.flag)}>{f.flag}</span>}</td>
+						<td>{f.commands.map((n, i) => <>{i > 0 && ' '}<a href={`#${n}`}><code>{n}</code></a></>)}</td>
+					</tr>
+				))}
+			</tbody>
+		</table>
+	</section>
+</div>
+
+<script>
+	for (const root of document.querySelectorAll<HTMLElement>('.sa-cmds')) {
+		const q = root.querySelector<HTMLInputElement>('[data-q]')!;
+		const flag = root.querySelector<HTMLSelectElement>('[data-flag]')!;
+		const count = root.querySelector<HTMLElement>('[data-count]')!;
+		const empty = root.querySelector<HTMLElement>('[data-empty]')!;
+		const groups = [...root.querySelectorAll<HTMLElement>('[data-group]')];
+		const statics = [...root.querySelectorAll<HTMLElement>('[data-static]')];
+		const filter = () => {
+			const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+			const f = flag.value;
+			let hits = 0;
+			for (const g of groups) {
+				let any = false;
+				for (const c of g.querySelectorAll<HTMLElement>('[data-cmd]')) {
+					const on = words.every((w) => c.dataset.text!.includes(w)) && (!f || c.dataset.flags!.split(' ').includes(f));
+					c.hidden = !on;
+					if (on) { any = true; hits++; }
+				}
+				g.hidden = !any;
+			}
+			const active = words.length > 0 || !!f;
+			for (const s of statics) s.hidden = active;
+			count.textContent = active ? `${hits} command${hits === 1 ? '' : 's'}` : '';
+			empty.hidden = hits > 0;
+		};
+		q.addEventListener('input', filter);
+		flag.addEventListener('change', filter);
+		// "?q=ban" and "?flag=@css/root" links.
+		const params = new URLSearchParams(location.search);
+		if (params.get('q')) q.value = params.get('q')!;
+		if (params.get('flag')) flag.value = params.get('flag')!;
+		if (q.value || flag.value) filter();
+	}
+</script>
+
+<style>
+	.sa-group { margin-top: 2.5rem; scroll-margin-top: calc(var(--sl-nav-height) + 6rem); }
+	.sa-group > h2 { margin-bottom: 0.5rem; }
+	.sa-note { color: var(--sl-color-gray-2); font-size: var(--sl-text-sm); }
+	.sa-cmd {
+		margin-top: 1rem; padding: 1rem 1.1rem 0.8rem; border: 1px solid var(--sa-line); border-radius: 0.75rem;
+		background: var(--sa-surface); scroll-margin-top: calc(var(--sl-nav-height) + 6rem);
+	}
+	.sa-cmd:target { border-color: var(--sl-color-accent); }
+	.sa-cmd header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; }
+	.sa-cmd h3 { margin: 0 0.3rem 0 0; font-size: var(--sl-text-lg); }
+	.sa-cmd h3 a { text-decoration: none; }
+	.sa-cmd h3 code { background: none; border: 0; padding: 0; color: var(--sl-color-white); font-weight: 700; }
+	.sa-usage {
+		margin: 0.7rem 0 0; padding: 0.5rem 0.75rem; border-radius: 0.5rem; overflow-x: auto;
+		background: var(--sl-color-black); border: 1px solid var(--sa-line); font-size: var(--sl-text-sm);
+	}
+	.sa-usage code { background: none; border: 0; padding: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+	.sa-cmd p { margin: 0.6rem 0 0; }
+	.sa-meta { font-size: var(--sl-text-xs); color: var(--sl-color-gray-3); }
+	.sa-meta a { color: var(--sl-color-gray-3); }
+	.sa-meta a:hover { color: var(--sl-color-accent); }
+	.sa-sep::after { content: '·'; margin: 0 0.5rem; }
+	.sa-empty { margin-top: 2rem; color: var(--sl-color-gray-3); }
+	#by-flag td:last-child { line-height: 2; }
+	#by-flag td:last-child code { white-space: nowrap; }
+</style>

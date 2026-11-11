@@ -1,0 +1,107 @@
+---
+// The public API surface, generated from CS2-SimpleAdminApi/ at build time (src/data/api.mjs):
+// every member of ICS2_SimpleAdminApi with its signature and doc summary, and the types it uses.
+import { api } from '../data/api.mjs';
+import { modules } from '../data/modules.mjs';
+import { inline } from '../data/changelog';
+
+const repo = 'https://github.com/mrc4tt/CS2-SimpleAdmin';
+const { file, members, types } = api();
+const mods = modules().modules;
+const usedBy = (name: string) => mods.filter((m) => m.apiUsed.includes(name)).map((m) => m.dir.replace(/^CS2-SimpleAdmin_|-CS2-SimpleAdmin$/g, ''));
+
+// Areas by member name; anything new lands in "Other" until it is placed here.
+const AREAS: [string, string, RegExp][] = [
+	['events', 'Events', /^On[A-Z]/],
+	['players', 'Players and penalties', /^(GetPlayerInfo|GetPlayerMuteStatus|IssuePenalty|GetValidPlayers|GetTarget)$/],
+	['server', 'Server and database', /^(GetConnectionString|GetServerAddress|GetServerId)$/],
+	['activity', 'Messages, logging and silent admins', /^(LogCommand|ShowAdminActivity\w*|IsAdminSilent|ListSilentAdminsSlots)$/],
+	['commands', 'Commands', /^(RegisterCommand|UnRegisterCommand)$/],
+	['menus', 'Menus', /Menu/],
+];
+const list = members.filter((m) => m.kind !== 'field');
+const areas = AREAS.map(([id, title, re]) => ({ id, title, items: list.filter((m) => re.test(m.name)) }));
+const placed = new Set(areas.flatMap((a) => a.items));
+const other = list.filter((m) => !placed.has(m));
+if (other.length) {
+	areas.push({ id: 'other', title: 'Other', items: other });
+	console.warn(`[api] not placed in an area: ${other.map((m) => m.name).join(', ')}`);
+}
+const anchor = (m: { name: string }, i: number, arr: { name: string }[]) => {
+	const same = arr.filter((x) => x.name === m.name);
+	const n = same.indexOf(m);
+	return n > 0 ? `${m.name.toLowerCase()}-${n + 1}` : m.name.toLowerCase();
+};
+---
+
+<div class="sa-api">
+	<ul class="sa-chips not-content">
+		{areas.filter((a) => a.items.length).map((a) => <li><a href={`#${a.id}`}>{a.title} <span>{a.items.length}</span></a></li>)}
+		<li><a href="#types">Types <span>{types.length}</span></a></li>
+	</ul>
+
+	{areas.filter((a) => a.items.length).map((a) => (
+		<section id={a.id} class="sa-api__sec">
+			<h2>{a.title}</h2>
+			{a.items.map((m, i, arr) => {
+				const by = usedBy(m.name);
+				return (
+					<article class="sa-mem" id={anchor(m, i, arr)}>
+						<pre class="sa-sig"><code>{m.decl}</code></pre>
+						{m.summary && <p set:html={inline(m.summary)} />}
+						{m.params.length > 0 && (
+							<dl class="sa-params">
+								{m.params.map((p) => <><dt><code>{p.name}</code></dt><dd set:html={inline(p.text)} /></>)}
+							</dl>
+						)}
+						{by.length > 0 && <p class="sa-by">Used by: {by.join(', ')}</p>}
+					</article>
+				);
+			})}
+		</section>
+	))}
+
+	<section id="types" class="sa-api__sec">
+		<h2>Types</h2>
+		{types.map((t) => (
+			<article class="sa-mem" id={`type-${t.name.toLowerCase()}`}>
+				<h3><code>{t.kind} {t.name}</code></h3>
+				{t.summary && <p set:html={inline(t.summary)} />}
+				{t.kind === 'enum' ? (
+					<pre class="sa-sig"><code>{t.values.join(',\n')}</code></pre>
+				) : (
+					<>
+						{t.ctor && <pre class="sa-sig"><code>{`${t.name}(\n  ${t.ctor.join(',\n  ')}\n)`}</code></pre>}
+						<table>
+							<thead><tr><th>Member</th><th>Description</th></tr></thead>
+							<tbody>
+								{t.members.map((x) => <tr><td><code>{x.decl}</code></td><td set:html={inline(x.summary || '')} /></tr>)}
+							</tbody>
+						</table>
+					</>
+				)}
+				<p class="sa-by"><a href={`${repo}/blob/main/${t.file}`}>{t.file}</a></p>
+			</article>
+		))}
+	</section>
+	<p class="sa-by">Source: <a href={`${repo}/blob/main/${file}`}>{file}</a></p>
+</div>
+
+<style>
+	.sa-api__sec { margin-top: 2.5rem; scroll-margin-top: calc(var(--sl-nav-height) + 1.5rem); }
+	.sa-mem { margin-top: 1rem; padding: 0.9rem 1.1rem; border: 1px solid var(--sa-line); border-radius: 0.75rem; background: var(--sa-surface); scroll-margin-top: calc(var(--sl-nav-height) + 1.5rem); }
+	.sa-mem:target { border-color: var(--sl-color-accent); }
+	.sa-mem h3 { margin: 0; font-size: var(--sl-text-base); }
+	.sa-mem h3 code { background: none; border: 0; padding: 0; }
+	.sa-sig { margin: 0.4rem 0 0; padding: 0.55rem 0.75rem; border-radius: 0.5rem; overflow-x: auto; background: var(--sl-color-black); border: 1px solid var(--sa-line); font-size: var(--sl-text-xs); line-height: 1.6; }
+	.sa-mem > pre.sa-sig:first-child { margin-top: 0; }
+	.sa-sig code { background: none; border: 0; padding: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+	.sa-mem p { margin: 0.5rem 0 0; font-size: var(--sl-text-sm); }
+	.sa-params { margin: 0.5rem 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 0.8rem; font-size: var(--sl-text-sm); }
+	.sa-params dt, .sa-params dd { margin: 0; }
+	@media (max-width: 40rem) { .sa-params { grid-template-columns: 1fr; } .sa-params dd { margin-bottom: 0.4rem; } }
+	.sa-by { font-size: var(--sl-text-xs) !important; color: var(--sl-color-gray-3); }
+	.sa-by a { color: var(--sl-color-gray-3); }
+	.sa-mem table { margin-top: 0.6rem; }
+	.sa-mem td code { overflow-wrap: anywhere; white-space: normal !important; }
+</style>

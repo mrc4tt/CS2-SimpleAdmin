@@ -1,0 +1,54 @@
+---
+// The modules in Modules/, generated at build time (src/data/modules.mjs).
+import { modules } from '../data/modules.mjs';
+import { api } from '../data/api.mjs';
+
+const repo = 'https://github.com/mrc4tt/CS2-SimpleAdmin';
+const list = modules().modules;
+const apiNames = new Set(api().members.map((m) => m.name));
+const author = (a: string | null) => (a && !/your name/i.test(a) ? a : null);
+---
+
+<div class="sa-mods">
+	{list.map((m) => (
+		<article class="sa-mod" id={m.dir.toLowerCase()}>
+			<header>
+				<h3>{m.name}</h3>
+				{m.shipped ? <span class="sa-flag">in the release zip</span> : <span class="sa-pill">source only</span>}
+				{m.version && <span class="sa-pill">v{m.version.replace(/^v/, '')}</span>}
+			</header>
+			<p>{m.about ?? m.description}</p>
+			<p class="sa-mod__meta">
+				<a href={`${repo}/tree/main/Modules/${m.dir}`}><code>Modules/{m.dir}</code></a>
+				{author(m.author) && <> · by {author(m.author)}</>}
+				{m.readme && <> · <a href={`${repo}/blob/main/${m.readme}`}>README</a></>}
+			</p>
+			{m.apiUsed.filter((u) => apiNames.has(u)).length > 0 && (
+				<p class="sa-mod__api">API: {m.apiUsed.filter((u) => apiNames.has(u)).map((u, i) => <>{i > 0 && ' '}<a href={`/extending/api/#${u.toLowerCase()}`}><code>{u}</code></a></>)}</p>
+			)}
+			{m.consoleCommands.length > 0 && <p class="sa-mod__api">Commands: {m.consoleCommands.map((c, i) => <>{i > 0 && ' '}<code>{c}</code></>)}</p>}
+			{m.config && (
+				<details>
+					<summary>Default config <code>configs/plugins/{m.dir}/{m.dir}.json</code></summary>
+					<pre><code>{JSON.stringify(m.config.defaults, null, 2)}</code></pre>
+				</details>
+			)}
+		</article>
+	))}
+</div>
+
+<style>
+	.sa-mods { display: grid; gap: 1rem; margin-top: 1.5rem; }
+	.sa-mod { padding: 1rem 1.1rem; border: 1px solid var(--sa-line); border-radius: 0.75rem; background: var(--sa-surface); }
+	.sa-mod header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; }
+	.sa-mod h3 { margin: 0 0.3rem 0 0; font-size: var(--sl-text-lg); }
+	.sa-mod p { margin: 0.5rem 0 0; font-size: var(--sl-text-sm); }
+	.sa-mod__meta, .sa-mod__api { color: var(--sl-color-gray-3); font-size: var(--sl-text-xs) !important; line-height: 1.9; }
+	.sa-mod__meta a { color: var(--sl-color-gray-3); }
+	.sa-mod__api code { white-space: nowrap; }
+	.sa-mod details { margin-top: 0.6rem; font-size: var(--sl-text-sm); }
+	.sa-mod summary { cursor: pointer; color: var(--sl-color-gray-2); }
+	.sa-mod summary code { overflow-wrap: anywhere; }
+	.sa-mod pre { margin: 0.5rem 0 0; padding: 0.6rem 0.8rem; overflow: auto; border-radius: 0.5rem; background: var(--sl-color-black); border: 1px solid var(--sa-line); font-size: var(--sl-text-xs); }
+	.sa-mod pre code { background: none; border: 0; padding: 0; }
+</style>

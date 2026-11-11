@@ -1,0 +1,146 @@
+/* CS2-SimpleAdmin theme for Starlight: teal to blue on charcoal, a sibling of the MatchZy site
+   (same charcoal greys and type, different accent). Dark is the main look; light keeps the accent
+   with cool greys. Fonts are self-hosted (fontsource), no third-party request. */
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+:root {
+	--sl-font: 'Inter Variable', system-ui, sans-serif;
+	--sl-font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+	--sa-teal: #2cc6d8;
+	--sa-blue: #3f7dff;
+	--sa-green: #37e08b;
+	--sa-grad: linear-gradient(100deg, var(--sa-teal), var(--sa-blue));
+	--sl-content-width: 50rem;
+}
+
+/* Dark (default) */
+:root,
+::backdrop {
+	--sl-color-accent-low: #06303a;
+	--sl-color-accent: #2cc6d8;
+	--sl-color-accent-high: #b3eef5;
+	--sl-color-white: #f4f6f9;
+	--sl-color-gray-1: #e2e6ec;
+	--sl-color-gray-2: #bac1cc;
+	--sl-color-gray-3: #8a919d;
+	--sl-color-gray-4: #59606b;
+	--sl-color-gray-5: #32373f;
+	--sl-color-gray-6: #1c1f25;
+	--sl-color-black: #111317;
+	--sa-surface: #191c21;
+	--sa-surface-2: #21252c;
+	--sa-line: #2b3038;
+	--sa-on-accent: #04161b;
+	/* Change kinds (What's new / changelog tags) and permission badges */
+	--sa-k-added: #37d982;
+	--sa-k-changed: #6fb1ff;
+	--sa-k-fixed: #ffb14a;
+	--sa-k-removed: #a0a7b2;
+	--sa-k-security: #ff6b86;
+	--sa-root: #ff7a8f;
+}
+
+/* Light */
+:root[data-theme='light'],
+[data-theme='light'] ::backdrop {
+	--sl-color-accent-low: #d5f3f7;
+	--sl-color-accent: #0a7488;
+	--sl-color-accent-high: #04394a;
+	--sl-color-white: #14171c;
+	--sl-color-gray-1: #22262d;
+	--sl-color-gray-2: #384049;
+	--sl-color-gray-3: #5a626e;
+	--sl-color-gray-4: #8a919d;
+	--sl-color-gray-5: #c7ccd4;
+	--sl-color-gray-6: #eaedf1;
+	--sl-color-gray-7: #f5f7f9;
+	--sl-color-black: #ffffff;
+	--sa-surface: #f5f7f9;
+	--sa-surface-2: #edf0f3;
+	--sa-line: #e0e4ea;
+	--sa-k-added: #0f7a43;
+	--sa-k-changed: #1f5fae;
+	--sa-k-fixed: #a64d00;
+	--sa-k-removed: #5a626e;
+	--sa-k-security: #b8213f;
+	--sa-root: #b8213f;
+}
+
+/* Header: a thin accent line under it (only the outer <header>; the inner div has the class too). */
+header.header { border-bottom: 1px solid var(--sa-line); box-shadow: inset 0 -2px 0 -1px color-mix(in srgb, var(--sa-teal) 35%, transparent); }
+.site-title { font-weight: 800; letter-spacing: -0.02em; }
+
+/* Headings and body */
+.sl-markdown-content :is(h1, h2, h3) { letter-spacing: -0.015em; }
+.sl-markdown-content h2 { font-weight: 750; }
+h1#_top { font-weight: 850; letter-spacing: -0.03em; }
+
+/* Code */
+.sl-markdown-content :not(pre) > code { border-radius: 0.3rem; padding: 0.1em 0.35em; background: var(--sa-surface-2); border: 1px solid var(--sa-line); }
+
+/* Tables: full width, compact name columns */
+.sl-markdown-content table { display: table; width: 100%; font-size: var(--sl-text-sm); }
+.sl-markdown-content table td:first-child code { white-space: nowrap; }
+@media (max-width: 40rem) {
+	.sl-markdown-content table { display: block; overflow-x: auto; }
+	.sl-markdown-content table td:first-child code { white-space: normal; overflow-wrap: anywhere; }
+}
+
+.sidebar-content a[aria-current='page'] { font-weight: 650; }
+
+/* Buttons used on pages */
+.sa-btn {
+	display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1.2rem; border-radius: 0.6rem;
+	font-weight: 650; text-decoration: none; border: 1px solid var(--sa-line); color: var(--sl-color-white);
+	background: var(--sa-surface); transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.sa-btn:hover { transform: translateY(-1px); border-color: var(--sa-teal); color: var(--sl-color-white); }
+.sa-btn--primary { background: var(--sa-grad); color: var(--sa-on-accent, #04161b); border-color: transparent; box-shadow: 0 8px 30px -10px var(--sa-teal); }
+.sa-btn--primary:hover { color: #04161b; box-shadow: 0 12px 34px -8px var(--sa-teal); }
+
+/* Shared bits of the generated reference pages */
+.sa-flag {
+	display: inline-block; padding: 0.05rem 0.5rem; border-radius: 0.35rem; font-family: var(--sl-font-mono);
+	font-size: var(--sl-text-xs); font-weight: 600; white-space: nowrap;
+	color: var(--sl-color-accent-high); background: var(--sl-color-accent-low);
+}
+.sa-flag--root { color: var(--sa-root); background: color-mix(in srgb, var(--sa-root) 14%, transparent); }
+.sa-flag--none { color: var(--sl-color-gray-3); background: var(--sa-surface-2); font-family: var(--sl-font); }
+.sa-pill {
+	display: inline-block; padding: 0.05rem 0.5rem; border-radius: 999px; font-size: var(--sl-text-xs);
+	color: var(--sl-color-gray-3); border: 1px solid var(--sa-line); white-space: nowrap;
+}
+.sa-searchbar {
+	position: sticky; top: calc(var(--sl-nav-height) + 0.5rem); z-index: 2;
+	display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-block: 1.5rem 0.5rem; padding: 0.6rem;
+	border: 1px solid var(--sa-line); border-radius: 0.75rem;
+	background: color-mix(in srgb, var(--sl-color-black) 88%, transparent); backdrop-filter: blur(8px);
+}
+.sa-search {
+	flex: 1 1 14rem; min-width: 0; display: flex; align-items: center; gap: 0.5rem; padding-inline: 0.7rem;
+	border: 1px solid var(--sa-line); border-radius: 0.5rem; background: var(--sa-surface); color: var(--sl-color-gray-3);
+}
+.sa-search:focus-within { border-color: var(--sl-color-accent); }
+.sa-search input { flex: 1; min-width: 0; padding-block: 0.5rem; border: 0; outline: 0; background: transparent; color: var(--sl-color-white); font: inherit; }
+.sa-select {
+	max-width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--sa-line); border-radius: 0.5rem;
+	background: var(--sa-surface); color: var(--sl-color-white); font: inherit;
+}
+.sa-count { margin: 0; width: 100%; font-size: var(--sl-text-sm); color: var(--sl-color-gray-3); }
+.sa-count:empty { display: none; }
+.sa-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.sa-chips li { margin: 0; }
+.sa-chips a {
+	display: inline-flex; gap: 0.4rem; padding: 0.25rem 0.7rem; border-radius: 999px; font-size: var(--sl-text-sm);
+	text-decoration: none; color: var(--sl-color-gray-2); background: var(--sa-surface); border: 1px solid var(--sa-line);
+}
+.sa-chips a:hover { border-color: var(--sl-color-accent); color: var(--sl-color-white); }
+.sa-chips a span { color: var(--sl-color-gray-3); font-variant-numeric: tabular-nums; }
+[hidden] { display: none !important; }
+
+/* Landing page (splash template): wider than the docs column, and Starlight's own title is
+   replaced by the hero. */
+body:has(.sa-landing) .sl-container { max-width: 76rem; }
+body:has(.sa-landing) .content-panel:has(> .sl-container > h1#_top) { display: none; }
+body:has(.sa-landing) .content-panel { border-top: 0; }

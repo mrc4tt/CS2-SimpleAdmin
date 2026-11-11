@@ -1,0 +1,88 @@
+---
+title: Installation
+description: Requirements and installing CS2-SimpleAdmin from the release zip.
+sidebar:
+  order: 1
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import { requirements, download, zipName } from '../../../data/plugin';
+import ReleaseCheck from '../../../components/ReleaseCheck.astro';
+
+## Requirements
+
+- A Counter-Strike 2 dedicated server with **Metamod:Source** and **CounterStrikeSharp**.
+  This release is built against CounterStrikeSharp API <code>{requirements.css}</code> and targets
+  **.NET {requirements.dotnet}**, so use a CounterStrikeSharp build that runs .NET {requirements.dotnet}.
+- A database: **SQLite** works out of the box (the default, nothing to install). **MySQL** is
+  optional and needed when several servers share one ban list. See [Database](/getting-started/database/).
+- **CS2MenuManager** <code>{requirements.menuManager}</code> or newer for the menus. It is
+  **included in the release zip**, you do not install it separately.
+
+On load the plugin checks that these folders exist and unloads itself with an error in the
+console if one is missing:
+
+<ul>
+	{requirements.requiredPlugins.map((p) => <li><code>addons/counterstrikesharp/plugins/{p}/</code></li>)}
+	{requirements.requiredShared.map((p) => <li><code>addons/counterstrikesharp/shared/{p}/</code></li>)}
+</ul>
+
+## Install
+
+<Steps>
+
+1. Download <a href={download} data-sa-download data-sa-version-text><code>{zipName}</code></a> from the
+   [latest release](https://github.com/mrc4tt/CS2-SimpleAdmin/releases/latest).
+
+2. Extract it into `game/csgo/addons/` on the server. The zip contains one `counterstrikesharp/`
+   folder, so the files land here:
+
+   ```txt
+   addons/counterstrikesharp/
+     plugins/CS2-SimpleAdmin/                 the plugin
+     plugins/CS2-SimpleAdmin_FunCommands/     fun commands module (noclip, god, freeze...)
+     plugins/CS2-SimpleAdmin_StealthModule/   stealth module (hidden admins)
+     plugins/CS2MenuManager_MenuManager/      menu library (runtime part)
+     shared/CS2-SimpleAdminApi/               the API other plugins and modules use
+     shared/CS2MenuManager/                   menu library (shared part)
+   ```
+
+   Do not want the fun commands or the stealth module? Leave their folder out; the plugin works
+   without them. [Fun commands and stealth](/guides/fun-and-stealth/) explains what they do.
+
+3. In `addons/counterstrikesharp/configs/core.json` set `"UnlockConCommands": true`. Without it the
+   plugin logs a warning, and a kicked player who was just banned can rejoin for 60 seconds.
+
+4. Start (or restart) the server. The plugin creates its files:
+
+   ```txt
+   addons/counterstrikesharp/configs/plugins/CS2-SimpleAdmin/CS2-SimpleAdmin.json   settings
+   addons/counterstrikesharp/configs/plugins/CS2-SimpleAdmin/Commands.json          command aliases
+   addons/counterstrikesharp/plugins/CS2-SimpleAdmin/cs2-simpleadmin.sqlite         the database (SQLite)
+   ```
+
+   The database tables are created on the first start (MySQL too, once the connection is set).
+
+5. Make yourself an admin. From the **server console** (or RCON):
+
+   ```txt
+   css_addadmin 76561198000000000 YourName @css/root 100
+   ```
+
+   That is your SteamID64, a name, the flags (or `#group`), and the immunity. Add a duration in
+   minutes as a fifth argument for a temporary admin, and `-g` to make the admin global on every
+   server that shares the database. The plugin reloads its admins right after adding one.
+
+6. In game, type `!admin` to open the admin menu.
+
+</Steps>
+
+## Next
+
+- [Configuration](/getting-started/configuration/): what to change in `CS2-SimpleAdmin.json`.
+- [Database](/getting-started/database/): SQLite or MySQL, backups.
+- [Bans, mutes and warnings](/guides/penalties/): how to use the penalty commands.
+- [Commands](/reference/commands/): every command, its flag and usage.
+- Coming from daffyyyy's version? See [Switching from daffyyyy's version](/getting-started/migrating/).
+
+<ReleaseCheck />
