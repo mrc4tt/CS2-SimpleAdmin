@@ -113,7 +113,7 @@ public class Migration(string migrationsPath, bool isSqlite)
                     // CREATE TABLE for sa_warns in 010) is the actual missing
                     // piece. Run each statement individually and tolerate the
                     // duplicate-column case so the rest of the script continues.
-                    foreach (var statement in SplitSqliteStatements(sqlScript))
+                    foreach (var statement in SplitStatements(sqlScript))
                     {
                         await using var cmdStmt = connection.CreateCommand();
                         cmdStmt.CommandText = statement;
@@ -130,9 +130,24 @@ public class Migration(string migrationsPath, bool isSqlite)
                 }
                 else
                 {
-                    await using var cmdMigration = connection.CreateCommand();
-                    cmdMigration.CommandText = sqlScript;
-                    await cmdMigration.ExecuteNonQueryAsync();
+                    // MySQL has no `ADD INDEX IF NOT EXISTS` (MariaDB does) and no `ADD COLUMN IF NOT EXISTS`.
+                    // Run statements one by one and skip the "already there" errors, so a re-run from
+                    // ReconcileSchemaAsync gets past changes that a previous run already applied.
+                    foreach (var statement in SplitStatements(sqlScript))
+                    {
+                        await using var cmdStmt = connection.CreateCommand();
+                        cmdStmt.CommandText = statement;
+                        try
+                        {
+                            await cmdStmt.ExecuteNonQueryAsync();
+                        }
+                        catch (MySqlConnector.MySqlException ex)
+                            when (ex.ErrorCode is MySqlConnector.MySqlErrorCode.DuplicateKeyName
+                                      or MySqlConnector.MySqlErrorCode.DuplicateFieldName)
+                        {
+                            // Index or column already added by a prior run of this migration.
+                        }
+                    }
                 }
 
                 await UpdateLastAppliedVersionAsync(connection, version);
@@ -193,13 +208,13 @@ public class Migration(string migrationsPath, bool isSqlite)
     }
 
     /// <summary>
-    /// Splits a SQLite migration script into individual statements on `;`.
-    /// Naive — assumes no semicolons inside string literals or triggers. That
-    /// holds for every migration currently in /Migrations/Sqlite; if a future
+    /// Splits a migration script into individual statements on `;`.
+    /// Naive — assumes no semicolons inside string literals, triggers or procedures.
+    /// That holds for every migration currently in /Migrations; if a future
     /// migration needs embedded semicolons (e.g. CREATE TRIGGER ... BEGIN ... END;),
     /// switch to a proper tokenizer.
     /// </summary>
-    private static IEnumerable<string> SplitSqliteStatements(string script)
+    private static IEnumerable<string> SplitStatements(string script)
     {
         foreach (var part in script.Split(';'))
         {
