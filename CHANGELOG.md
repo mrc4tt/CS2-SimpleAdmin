@@ -39,9 +39,7 @@ Releases are tagged `vX.Y.Z` (older releases used `build-X.Y.Z`).
 
 ### Changed
 
-- Update README.md
-- Update README.md
-- Update README.md
+- Update check and the "outdated" console warning point at `github.com/mrc4tt/CS2-SimpleAdmin`.
 
 ## [1.9.4] - 2026-10-24
 

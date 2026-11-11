@@ -96,7 +96,7 @@ public partial class CS2_SimpleAdmin_FunCommands : BasePlugin, IPluginConfig<Con
     // Plugin metadata
     public override string ModuleName => "CS2-SimpleAdmin Fun Commands";
     public override string ModuleVersion => "1.0.0";
-    public override string ModuleAuthor => "Your Name";
+    public override string ModuleAuthor => "daffyy & Miksen";
     public override string ModuleDescription => "Fun commands extension for CS2-SimpleAdmin";
 
     /// <summary>
