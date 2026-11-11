@@ -59,6 +59,7 @@ The API is a CounterStrikeSharp plugin capability named <code>{capability}</code
 ```csharp
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Capabilities;
+using CounterStrikeSharp.API.Modules.Admin;
 using CS2_SimpleAdminApi;
 using Microsoft.Extensions.Logging;
 
@@ -136,7 +137,7 @@ private void RegisterMenus()
 
 private object CreateSlapMenu(CCSPlayerController admin, MenuContext context) =>
     _api!.CreateMenuWithPlayers(context, admin,
-        player => player.IsValid && admin.CanTarget(player),
+        player => player.IsValid && AdminManager.CanPlayerTarget(admin, player),
         (adminPlayer, target) => { /* act on target */ });
 
 // in Unload: _api.UnregisterMenu("mymodule", "slap");
