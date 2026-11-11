@@ -89,17 +89,6 @@ public class Discord
         new() { Name = "Footer", Value = "" },
         new() { Name = "Time", Value = "{relative}" },
     ];
-    
-    [JsonPropertyName("DiscordAssociatedAccountsSettings")]
-    public DiscordPenaltySetting[] DiscordAssociatedAccountsSettings { get; set; } =
-    [
-        new() { Name = "Color", Value = "" },
-        new() { Name = "Webhook", Value = "" },
-        new() { Name = "ThumbnailUrl", Value = "" },
-        new() { Name = "ImageUrl", Value = "" },
-        new() { Name = "Footer", Value = "" },
-        new() { Name = "Time", Value = "{relative}" },
-    ];
 }
 
 public class CustomServerCommandData
@@ -256,9 +245,6 @@ public class CS2_SimpleAdminConfig : BasePluginConfig
  
     [JsonPropertyName("OtherSettings")]
     public OtherSettings OtherSettings { get; set; } = new();
-
-    [JsonPropertyName("EnableMetrics")]
-    public bool EnableMetrics { get; set; } = true;
 
     [JsonPropertyName("EnableUpdateCheck")]
     public bool EnableUpdateCheck { get; set; } = true;

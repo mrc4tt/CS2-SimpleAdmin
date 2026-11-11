@@ -123,21 +123,6 @@ public class ServerManager
 
                 // Renames are server-independent, so load them even when the server row could not be resolved
                 await CS2_SimpleAdmin.PlayerManager.LoadRenamedPlayers();
-
-                if (CS2_SimpleAdmin.Instance.Config.EnableMetrics)
-                {
-                    var queryString = $"?address={address}&hostname={hostname}";
-                    var client = CS2_SimpleAdmin.HttpClient;
-
-                    try
-                    {
-                        await client.GetAsync($"https://api.daffyy.dev/index.php{queryString}");
-                    }
-                    catch (HttpRequestException ex)
-                    {
-                        CS2_SimpleAdmin._logger?.LogWarning($"Unable to make metrics call: {ex.Message}");
-                    }
-                }
             });
             
             CS2_SimpleAdmin.SimpleAdminApi?.OnSimpleAdminReadyEvent();
