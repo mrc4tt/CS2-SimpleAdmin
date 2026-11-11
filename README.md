@@ -1,7 +1,4 @@
 <p align="center">
-  <a href="https://github.com/mrc4tt/CS2-SimpleAdmin/actions/workflows/build.yml">
-    <img src="https://github.com/mrc4tt/CS2-SimpleAdmin/actions/workflows/build.yml/badge.svg" alt="Build" />
-  </a>
   <a href="https://github.com/mrc4tt/CS2-SimpleAdmin/releases/latest">
     <img src="https://img.shields.io/github/v/release/mrc4tt/CS2-SimpleAdmin?color=orange&label=release" alt="Latest Release" />
   </a>
