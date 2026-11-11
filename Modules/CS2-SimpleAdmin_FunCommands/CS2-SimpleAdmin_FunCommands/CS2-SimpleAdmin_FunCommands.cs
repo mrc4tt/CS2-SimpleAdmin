@@ -35,7 +35,7 @@ namespace CS2_SimpleAdmin_FunCommands;
 /// </summary>
 public partial class CS2_SimpleAdmin_FunCommands : BasePlugin, IPluginConfig<Config>
 {
-    public Config Config { get; set; }
+    public Config Config { get; set; } = new();
 
     private CounterStrikeSharp.API.Modules.Timers.Timer? _speedGravityTimer;
 

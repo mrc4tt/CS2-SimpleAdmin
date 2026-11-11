@@ -4,6 +4,11 @@ Notable changes for server admins. Internal refactors, CI and build tweaks are l
 
 Releases are tagged `vX.Y.Z` (older releases used `build-X.Y.Z`).
 
+## [1.9.8] - 2026-11-11
+
+### Security
+- MySQL: updated MySqlConnector to 2.6.2. Older versions could send the database password before checking the server's TLS certificate ([GHSA-473q-m89c-ghf8](https://github.com/advisories/GHSA-473q-m89c-ghf8)).
+
 ## [1.9.7] - 2026-11-11
 
 ### Added
