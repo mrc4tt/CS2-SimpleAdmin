@@ -7,6 +7,9 @@ namespace CS2_SimpleAdmin_RedisInform;
 
 public class RedisSubscriber(string serverIdentifier)
 {
+    // Publisher and subscriber must use the same channel, or no server ever receives another's events
+    private static readonly RedisChannel EventsChannel = RedisChannel.Literal("cs2-simpleadmin_events");
+
     private ConnectionMultiplexer? _connection;
     private ISubscriber? _subscriber;
 
@@ -36,7 +39,7 @@ public class RedisSubscriber(string serverIdentifier)
         
         try
         {
-            await _subscriber.SubscribeAsync(RedisChannel.Literal("cs2-simpleadmin_events1"),
+            await _subscriber.SubscribeAsync(EventsChannel,
                 (_, message) =>
                 {
                     var parts = message.ToString().Split([':'], 2);
@@ -75,7 +78,7 @@ public class RedisSubscriber(string serverIdentifier)
             throw new InvalidOperationException("Subscriber not initialized.");
 
         var messageWithId = $"{serverIdentifier}:{message}";
-        await _subscriber.PublishAsync(RedisChannel.Literal("cs2-simpleadmin_events"), messageWithId);
+        await _subscriber.PublishAsync(EventsChannel, messageWithId);
     }
 
     public async Task DisposeAsync()

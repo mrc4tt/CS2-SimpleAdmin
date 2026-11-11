@@ -97,7 +97,7 @@ public sealed class AntiDLL_CS2_SimpleAdmin : BasePlugin, IPluginConfig<PluginCo
         if (player == null || !player.IsValid || player.IsBot || !_detections.Contains(player.Slot)) 
             return HookResult.Continue;
         
-        if (!_bannedPlayers.Contains(player.Slot) && player.Connected == PlayerConnectedState.PlayerConnected && player.TeamNum != 0)
+        if (!_bannedPlayers.Contains(player.Slot) && player.Connected == PlayerConnectedState.Connected && player.TeamNum != 0)
             PunishPlayer(player);
 
         return HookResult.Continue;
@@ -109,7 +109,7 @@ public sealed class AntiDLL_CS2_SimpleAdmin : BasePlugin, IPluginConfig<PluginCo
         if (!_detections.Add(player.Slot))
             return;
         
-        // if (player.Connected != PlayerConnectedState.PlayerConnected)
+        // if (player.Connected != PlayerConnectedState.Connected)
         // {
         //     _detections.Add(player.Slot);
         //     // AddTimer(3.0f, () => OnDetection(player, eventName));
@@ -134,9 +134,14 @@ public sealed class AntiDLL_CS2_SimpleAdmin : BasePlugin, IPluginConfig<PluginCo
         }
         else
         {
+            // UserId is null for a controller that is still connecting or already gone;
+            // .Value threw there. Without it a {userid} command cannot target anyone.
+            if (Config.CommandToExecute.Contains("{userid}") && player.UserId is null)
+                return;
+
             Server.ExecuteCommand(Config.CommandToExecute.Replace("{steamid64}", player.SteamID.ToString())
                 .Replace("{duration}", Config.Duration.ToString()).Replace("{reason}", $"\"{Config.Reason}\"")
-                .Replace("{userid}", player.UserId.Value.ToString()));
+                .Replace("{userid}", player.UserId?.ToString() ?? string.Empty));
         }
     }
 
