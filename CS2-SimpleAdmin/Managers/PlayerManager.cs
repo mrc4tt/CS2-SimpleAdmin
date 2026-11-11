@@ -523,8 +523,12 @@ internal class PlayerManager
                     var isMuted = PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Mute, out _);
                     var isSilenced = PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence, out _);
 
+                    // Players muted by "css_adminvoice muteAll" stay muted until unmuteAll
+                    var heldByMuteAll = CS2_SimpleAdmin.AllVoiceMuted &&
+                                        !AdminManager.PlayerHasPermissions(new SteamID(player.SteamID), "@css/chat");
+
                     // Only reset voice flags if not muted or silenced
-                    if (!isMuted && !isSilenced)
+                    if (!isMuted && !isSilenced && !heldByMuteAll)
                     {
                         player.VoiceFlags = VoiceFlags.Normal;
                     }

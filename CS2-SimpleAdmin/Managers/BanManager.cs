@@ -355,13 +355,17 @@ internal class BanManager(IDatabaseProvider? databaseProvider)
         }
     }
 
-    public async Task UnbanPlayer(string playerPattern, string adminSteamId, string reason)
+    /// <summary>
+    /// Lifts every active ban whose SteamID, name or IP equals the pattern.
+    /// </summary>
+    /// <returns>The number of bans lifted (0 when nothing matched or on error).</returns>
+    public async Task<int> UnbanPlayer(string playerPattern, string adminSteamId, string reason)
 {
-    if (databaseProvider == null) return;
+    if (databaseProvider == null) return 0;
 
     if (playerPattern is not { Length: > 1 })
     {
-        return;
+        return 0;
     }
     try
     {
@@ -371,7 +375,7 @@ internal class BanManager(IDatabaseProvider? databaseProvider)
         var bans = await connection.QueryAsync(sqlRetrieveBans, new { pattern = playerPattern, serverid = CS2_SimpleAdmin.ServerId });
         var bansList = bans as dynamic[] ?? bans.ToArray();
         if (bansList.Length == 0)
-            return;
+            return 0;
 
         var sqlAdminId = databaseProvider.GetUnbanAdminIdQuery();
         var adminId = await connection.ExecuteScalarAsync<int?>(sqlAdminId, new { adminSteamId }) ?? 0;
@@ -409,10 +413,13 @@ internal class BanManager(IDatabaseProvider? databaseProvider)
                         Server.ExecuteCommand($"removeid {new SteamID(steamId).SteamId3}");
                 });
         }
+
+        return bansList.Length;
     }
     catch (Exception ex)
     {
         CS2_SimpleAdmin._logger?.LogError(ex, "Unable to unban player with pattern {pattern}", playerPattern);
+        return 0;
     }
 }
 

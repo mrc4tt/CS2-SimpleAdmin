@@ -337,11 +337,22 @@ internal static class Helper
             }
             else
             {
-                throw new ArgumentException($"Invalid time unit '{unit}' in time string.", nameof(time));
+                // Unknown unit (e.g. "5x"): invalid, so the caller rejects the command instead of crashing
+                return -1;
             }
         }
         
         return totalMinutes > 0 ? totalMinutes : -1;
+    }
+
+    /// <summary>
+    /// Parses an optional time argument: a missing or empty argument means 0 (permanent),
+    /// anything given is parsed with <see cref="ParsePenaltyTime"/> and is -1 when invalid.
+    /// </summary>
+    public static int ParseOptionalPenaltyTime(CommandInfo command, int argIndex)
+    {
+        var arg = command.ArgCount > argIndex ? command.GetArg(argIndex) : string.Empty;
+        return string.IsNullOrWhiteSpace(arg) ? 0 : ParsePenaltyTime(arg);
     }
 
     public static void PrintToCenterAll(string message)

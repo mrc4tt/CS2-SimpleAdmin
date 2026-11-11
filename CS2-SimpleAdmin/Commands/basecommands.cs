@@ -170,7 +170,7 @@ public partial class CS2_SimpleAdmin
     /// <param name="caller">The player issuing this command.</param>
     /// <param name="command">Command input parameters.</param>
     [RequiresPermissions("@css/chat")]
-    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    [CommandHelper(usage: "[muteAll | unmuteAll]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnAdminVoiceCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (caller == null || !caller.IsValid)
@@ -178,8 +178,9 @@ public partial class CS2_SimpleAdmin
 
         if (command.ArgCount > 1)
         {
-            if (command.GetArg(2).ToLower().Equals("muteAll"))
+            if (command.GetArg(1).Equals("muteAll", StringComparison.OrdinalIgnoreCase))
             {
+                AllVoiceMuted = true;
                 caller.SendLocalizedMessage(_localizer, "sa_admin_voice_mute_all");
                 foreach (var player in Helper.GetValidPlayers().Where(p => p != caller && !AdminManager.PlayerHasPermissions(new SteamID(p.SteamID), "@css/chat")))
                 {
@@ -187,8 +188,9 @@ public partial class CS2_SimpleAdmin
                 }
             }
             
-            if (command.GetArg(2).ToLower().Equals("unmuteAll"))
+            if (command.GetArg(1).Equals("unmuteAll", StringComparison.OrdinalIgnoreCase))
             {
+                AllVoiceMuted = false;
                 caller.SendLocalizedMessage(_localizer, "sa_admin_voice_unmute_all");
                 foreach (var player in Helper.GetValidPlayers().Where(p => p != caller))
                 {
@@ -276,7 +278,18 @@ public partial class CS2_SimpleAdmin
         var globalAdmin = command.GetArg(4).ToLower().Equals("-g") || command.GetArg(5).ToLower().Equals("-g") ||
                           command.GetArg(6).ToLower().Equals("-g");
         int.TryParse(command.GetArg(4), out var immunity);
-        var time = Math.Max(0, Helper.ParsePenaltyTime(command.GetArg(5)));
+        var time = Helper.ParseOptionalPenaltyTime(command, 5);
+        if (time < 0)
+        {
+            // "-g" in the time slot is the global flag, not a time
+            if (command.GetArg(5).Equals("-g", StringComparison.OrdinalIgnoreCase))
+                time = 0;
+            else
+            {
+                command.ReplyToCommand(InvalidTimeMessage);
+                return;
+            }
+        }
 
         AddAdmin(caller, steamid, name, flags, immunity, time, globalAdmin, command);
     }
@@ -1060,9 +1073,13 @@ public partial class CS2_SimpleAdmin
         playersToTarget.ForEach(player =>
         {
             if (!player.UserId.HasValue) return;
-            if (!caller!.CanTarget(player)) return;
+            if (!caller.CanTarget(player)) return;
 
-            var playerInfo = PlayersInfo[player.SteamID];
+            if (!PlayersInfo.TryGetValue(player.SteamID, out var playerInfo))
+            {
+                command.ReplyToCommand($"No data loaded for {player.PlayerName} yet, try again in a moment.");
+                return;
+            }
 
             Task.Run(async () =>
             {
@@ -1085,7 +1102,9 @@ public partial class CS2_SimpleAdmin
                     }
                     printMethod($"• SteamID2: \"{playerInfo.SteamId.SteamId2}\"");
                     printMethod($"• Community link: \"{playerInfo.SteamId.ToCommunityUrl()}\"");
-                    if ((playerInfo.IpAddress != null || IpHelper.IsSdrAddress(player.IpAddress)) && AdminManager.PlayerHasPermissions(new SteamID(caller!.SteamID), "@css/showip"))
+                    // The server console (caller == null) may always see IPs
+                    var canSeeIp = caller == null || AdminManager.PlayerHasPermissions(new SteamID(caller.SteamID), "@css/showip");
+                    if ((playerInfo.IpAddress != null || IpHelper.IsSdrAddress(player.IpAddress)) && canSeeIp)
                         printMethod($"• IP Address: \"{playerInfo.IpAddress ?? IpHelper.GetPlayerIpDisplay(player.IpAddress)}\"");
                     printMethod($"• Ping: \"{player.Ping}\"");
                     printMethod($"• Total Bans: \"{playerInfo.TotalBans}\"");
