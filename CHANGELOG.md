@@ -4,6 +4,25 @@ Notable changes for server admins. Internal refactors, CI and build tweaks are l
 
 Releases are tagged `vX.Y.Z` (older releases used `build-X.Y.Z`).
 
+## [1.9.7] - 2026-11-11
+
+Documentation for the plugin is now at https://simpleadmin.miksen.me.
+
+### Changed
+- A penalty time that cannot be read (`5x`, or a reason where the time should be) is refused with "Invalid time" instead of becoming permanent. Write `css_warn #4 0 Spamming`, not `css_warn #4 Spamming`.
+- From the server console, `css_ban`, `css_gag`, `css_mute` and `css_silence` need a time.
+- `css_unban` replies with how many bans were lifted, or that no active ban matched.
+- `css_unwarn` also accepts the name or IP of a player on the server, and replies whether a warning was lifted.
+- MySQL: the database gets the missing indexes from migration 016 (new migration 018). Nothing to do; it runs on start.
+- Removed `EnableMetrics` (the upstream metrics service is gone) and the unused `DiscordAssociatedAccountsSettings`. Old configs that still contain them load fine.
+
+### Fixed
+- `css_adminvoice muteAll` and `unmuteAll` did nothing; they now work and stay in effect.
+- `css_who` from the server console failed.
+- An invalid Discord embed `Color` stopped the embed from being sent; it now logs a warning and uses white.
+- Fun Commands: a server crash when a player left while frozen with a time, or with changed speed or gravity.
+- Fun Commands: `css_give` also takes names like `weapon_ak47`.
+
 ## [1.9.6] - 2026-11-08
 
 ### Fixed
