@@ -103,12 +103,20 @@ public class DiscordManager(string webhookUrl)
     /// <returns>An integer representing the color.</returns>
     public static int ColorFromHex(string hex)
     {
+        hex = hex.Trim();
         if (hex.StartsWith($"#"))
         {
             hex = hex[1..];
         }
 
-        return int.Parse(hex, System.Globalization.NumberStyles.HexNumber);
+        // A typo in the config must not break the penalty command that sends the embed: fall back to white
+        if (hex.Length is 0 or > 6 || !int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var color))
+        {
+            CS2_SimpleAdmin._logger?.LogWarning("Invalid Discord embed color '{Hex}' in config, using white", hex);
+            return 0xFFFFFF;
+        }
+
+        return color;
     }
 }
 
