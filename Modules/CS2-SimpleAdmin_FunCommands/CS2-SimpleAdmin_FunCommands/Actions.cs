@@ -98,7 +98,16 @@ public partial class CS2_SimpleAdmin_FunCommands
         // Auto-unfreeze after duration
         if (time > 0)
         {
-            AddTimer(time, () => player.Pawn.Value?.Unfreeze(),
+            // Capture slot + SteamID, never the controller: the player can disconnect before
+            // the timer fires, and the wrapper would then point at freed memory.
+            var slot = player.Slot;
+            var steamId64 = player.SteamID;
+            AddTimer(time, () =>
+                {
+                    var target = Utilities.GetPlayerFromSlot(slot);
+                    if (target is not { IsValid: true } || target.SteamID != steamId64) return;
+                    target.Pawn.Value?.Unfreeze();
+                },
                 CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
         }
 

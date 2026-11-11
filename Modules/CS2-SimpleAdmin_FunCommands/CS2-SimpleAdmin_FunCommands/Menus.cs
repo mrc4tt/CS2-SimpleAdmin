@@ -323,9 +323,9 @@ public partial class CS2_SimpleAdmin_FunCommands
 
                     // Track speed modification for timer
                     if (speed == 1f)
-                        SpeedPlayers.Remove(target);
+                        SpeedPlayers.Remove(target.Slot);
                     else
-                        SpeedPlayers[target] = speed;
+                        SpeedPlayers[target.Slot] = speed;
 
                     LogAndShowActivity(admin, target, "fun_admin_speed_message", "css_speed", speed.ToString(CultureInfo.InvariantCulture));
                 }
@@ -380,9 +380,9 @@ public partial class CS2_SimpleAdmin_FunCommands
 
                     // Track gravity modification for timer
                     if (gravity == 1f)
-                        GravityPlayers.Remove(target);
+                        GravityPlayers.Remove(target.Slot);
                     else
-                        GravityPlayers[target] = gravity;
+                        GravityPlayers[target.Slot] = gravity;
 
                     LogAndShowActivity(admin, target, "fun_admin_gravity_message", "css_gravity", gravity.ToString(CultureInfo.InvariantCulture));
                 }

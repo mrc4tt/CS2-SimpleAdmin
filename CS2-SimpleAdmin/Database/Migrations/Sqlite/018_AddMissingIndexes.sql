@@ -1,0 +1,3 @@
+-- Migration 018: no-op on SQLite.
+-- The MySQL counterpart adds the indexes from migration 016, which was commented out for MySQL.
+-- SQLite's 016 already created them with CREATE INDEX IF NOT EXISTS.

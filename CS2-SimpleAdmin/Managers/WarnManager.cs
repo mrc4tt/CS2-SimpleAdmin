@@ -162,24 +162,25 @@ internal class WarnManager(IDatabaseProvider? databaseProvider)
     }
     
     /// <summary>
-    /// Removes the most recent warning matching a player pattern (usually SteamID string).
+    /// Removes the most recent active warning of the player with this SteamID64.
     /// </summary>
-    /// <param name="playerPattern">The pattern identifying the player whose last warning should be removed.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task UnwarnPlayer(string playerPattern)
+    /// <param name="steamId64">The SteamID64 of the player whose last warning should be removed.</param>
+    /// <returns>True when a warning was removed.</returns>
+    public async Task<bool> UnwarnPlayer(string steamId64)
     {
-        if (databaseProvider == null) return;
+        if (databaseProvider == null) return false;
 
         try
         {
             await using var connection = await databaseProvider.CreateConnectionAsync();
 
             var sql = databaseProvider.GetUnwarnLastQuery(CS2_SimpleAdmin.Instance.Config.MultiServerMode);
-            await connection.ExecuteAsync(sql, new { steamid = playerPattern, serverid = CS2_SimpleAdmin.ServerId });
+            return await connection.ExecuteAsync(sql, new { steamid = steamId64, serverid = CS2_SimpleAdmin.ServerId }) > 0;
         }
         catch (Exception ex)
         {
             CS2_SimpleAdmin._logger?.LogCritical("Unable to remove last warn {exception}", ex.Message);
+            return false;
         }
     }
 

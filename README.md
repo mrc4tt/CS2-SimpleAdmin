@@ -1,4 +1,7 @@
 <p align="center">
+  <a href="https://simpleadmin.miksen.me/">
+    <img src="https://img.shields.io/badge/docs-simpleadmin.miksen.me-blue" alt="Documentation" />
+  </a>
   <a href="https://github.com/mrc4tt/CS2-SimpleAdmin/releases/latest">
     <img src="https://img.shields.io/github/v/release/mrc4tt/CS2-SimpleAdmin?color=orange&label=release" alt="Latest Release" />
   </a>
@@ -8,6 +11,10 @@
 
 > **Manage your Counter-Strike 2 server with simple commands!**  
 > CS2-SimpleAdmin is a plugin designed to help you easily manage your Counter-Strike 2 server with user-friendly commands. Whether you're banning players, managing teams, or configuring server settings, CS2-SimpleAdmin has you covered.
+
+📘 **Documentation: [simpleadmin.miksen.me](https://simpleadmin.miksen.me/)** — installation, configuration,
+guides (bans and mutes, admin menu, Discord, multiple servers), the full command and config reference,
+and the module API.
 
 ---
 
@@ -38,24 +45,27 @@ CS2-SimpleAdmin is fully self-contained — drop the release zip into
 
 ## 🚀 Getting Started
 
-1. **Clone or Download the Repository**:  
-   Download or clone the repository and place it in your `addons/counterstrikesharp/plugins/` directory.
-
-2. **First Launch Configuration**:  
-   On the first launch, a configuration file will be generated at:
+1. Download the zip from the [latest release](https://github.com/mrc4tt/CS2-SimpleAdmin/releases/latest)
+   and extract it into `game/csgo/addons/` (it contains one `counterstrikesharp/` folder).
+2. Set `"UnlockConCommands": true` in `addons/counterstrikesharp/configs/core.json`.
+3. Start the server, then make yourself an admin from the server console:
    ```
-   addons/counterstrikesharp/configs/plugins/CS2-SimpleAdmin/CS2-SimpleAdmin.json
+   css_addadmin <your steamid64> <name> @css/root 100
    ```
-   Edit this file to customize the plugin settings according to your server needs.
+4. Type `!admin` in game.
 
-3. **Enjoy Managing Your Server!**  
-   Use the commands provided by the plugin to easily manage your server.
+The full walkthrough is in [Installation](https://simpleadmin.miksen.me/getting-started/installation/).
+Coming from daffyyyy's CS2-SimpleAdmin? See [Switching from daffyyyy's version](https://simpleadmin.miksen.me/getting-started/migrating/).
 
 ---
 
 ## 📁 Configuration
 
-The configuration file (`CS2-SimpleAdmin.json`) will be auto-generated after the first launch. It contains settings for MySQL connections, command permissions, and other plugin-specific configurations.
+The configuration file is generated on the first start at
+`addons/counterstrikesharp/configs/plugins/CS2-SimpleAdmin/CS2-SimpleAdmin.json`, with command aliases
+in `Commands.json` next to it. Every option is described in the
+[configuration reference](https://simpleadmin.miksen.me/reference/configuration/), every command in the
+[command reference](https://simpleadmin.miksen.me/reference/commands/).
 
 ---
 
@@ -79,6 +89,9 @@ The configuration file (`CS2-SimpleAdmin.json`) will be auto-generated after the
 ## 🛠️ Development
 
 This project started as a base for other plugins but has grown into a standalone admin management tool. Contributions are welcome! If you'd like to help with development or have ideas for new features, feel free to submit a pull request or open an issue.
+
+Writing a module? Start with [Modules](https://simpleadmin.miksen.me/extending/modules/) and the
+[API reference](https://simpleadmin.miksen.me/extending/api/).
 
 ---
 

@@ -200,7 +200,7 @@ public partial class CS2_SimpleAdmin
         
         reason = string.IsNullOrWhiteSpace(reason) ? _localizer?["sa_unknown"] ?? "Unknown" : reason;
 
-        var time = Math.Max(0, Helper.ParsePenaltyTime(command.GetArg(2)));
+        var time = Helper.ParseOptionalPenaltyTime(command, 2);
         if (!CheckValidMute(caller, time)) return;
 
         // Get player and admin info
@@ -464,7 +464,7 @@ public partial class CS2_SimpleAdmin
         
         reason = string.IsNullOrWhiteSpace(reason) ? _localizer?["sa_unknown"] ?? "Unknown" : reason;
 
-        var time = Math.Max(0, Helper.ParsePenaltyTime(command.GetArg(2)));
+        var time = Helper.ParseOptionalPenaltyTime(command, 2);
         if (!CheckValidMute(caller, time)) return;
 
         // Get player and admin info
@@ -777,7 +777,7 @@ public partial class CS2_SimpleAdmin
         
         reason = string.IsNullOrWhiteSpace(reason) ? _localizer?["sa_unknown"] ?? "Unknown" : reason;
 
-        var time = Math.Max(0, Helper.ParsePenaltyTime(command.GetArg(2)));
+        var time = Helper.ParseOptionalPenaltyTime(command, 2);
         if (!CheckValidMute(caller, time)) return;
 
         // Get player and admin info
@@ -955,6 +955,12 @@ public partial class CS2_SimpleAdmin
     /// <returns>True if mute penalty duration is allowed; false otherwise.</returns>
     private bool CheckValidMute(CCSPlayerController? caller, int duration)
     {
+        if (duration < 0)
+        {
+            ReplyInvalidTime(caller);
+            return false;
+        }
+
         if (caller == null) return true;
 
         var canPermMute = AdminManager.PlayerHasPermissions(new SteamID(caller.SteamID), "@css/permmute");

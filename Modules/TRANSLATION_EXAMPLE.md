@@ -47,6 +47,7 @@ YourModule/
 
 ```csharp
 // Show activity with per-player language support
+// (admin is null when the command comes from the server console)
 var args = new object[] { "CALLER", targetPlayer.PlayerName };
 if (admin == null || !_api.IsAdminSilent(admin))
 {
@@ -56,8 +57,8 @@ if (admin == null || !_api.IsAdminSilent(admin))
         _api.ShowAdminActivityLocalized(
             Localizer,                         // Your module's localizer
             "yourmod_admin_action",            // Translation key
-            admin.PlayerName,                  // Caller name
-            false,                             // dontPublish
+            admin?.PlayerName ?? "Console",    // Caller name
+            false,                             // dontPublish (not used by the localized variant)
             args);                             // Message arguments
     }
 }
@@ -75,12 +76,13 @@ public partial class MyModule : BasePlugin
 {
     private ICS2_SimpleAdminApi? _api;
 
-    private void GiveWeaponToPlayer(CCSPlayerController admin, CCSPlayerController target, string weaponName)
+    private void GiveWeaponToPlayer(CCSPlayerController? admin, CCSPlayerController target, string weaponName)
     {
         // Give the weapon
         target.GiveNamedItem(weaponName);
 
-        var callerName = admin.PlayerName;
+        // admin is null when the command comes from the server console
+        var callerName = admin?.PlayerName ?? "Console";
 
         // Show activity using module's localizer - each player sees it in their language!
         if (admin == null || !_api!.IsAdminSilent(admin))
@@ -104,10 +106,14 @@ public partial class MyModule : BasePlugin
 
 The API automatically replaces `"CALLER"` based on the server's `ShowActivityType` configuration:
 
-| ShowActivityType | What Players See |
-|-----------------|-----------------|
-| `1` | Non-admins see "Admin", admins see real name |
-| `2+` | Everyone sees real admin name |
+| ShowActivityType | Who gets the message | What `CALLER` becomes |
+|-----------------|----------------------|-----------------------|
+| `0` | Nobody (activity messages are off) | |
+| `1` | Everyone | "ADMIN" for players, the real name for admins (`@css/kick` or `@css/ban`) |
+| `2` (default) | Everyone | The real admin name |
+| `3` | Only admins (`@css/kick` or `@css/ban`) | The real admin name |
+
+Without a caller (server console) the name is "CONSOLE".
 
 **Example:**
 ```json
@@ -213,17 +219,17 @@ Use CounterStrikeSharp color tags in your translations:
 
 The **[CS2-SimpleAdmin_FunCommands](./CS2-SimpleAdmin_FunCommands/)** module is a perfect reference:
 
-**Translation files:** `Modules/CS2-SimpleAdmin_FunCommands/lang/`
+**Translation files:** `Modules/CS2-SimpleAdmin_FunCommands/CS2-SimpleAdmin_FunCommands/lang/`
 - Has 13 languages (en, pl, ru, de, fr, es, etc.)
 - Shows proper key naming (`fun_admin_*`)
 - Demonstrates color usage
 
 **Code examples:** `Modules/CS2-SimpleAdmin_FunCommands/CS2-SimpleAdmin_FunCommands/Actions.cs`
-- Lines 20-31: God mode with translations
-- Lines 48-59: NoClip with translations
-- Lines 76-86: Freeze with translations
+- `God()`: God mode with translations
+- `NoClip()`: NoClip with translations
+- `Freeze()`: Freeze with translations
 
-**Helper method:** `Modules/CS2-SimpleAdmin_FunCommands/CS2-SimpleAdmin_FunCommands/Commands.cs:274-306`
+**Helper method:** `LogAndShowActivity()` in `Modules/CS2-SimpleAdmin_FunCommands/CS2-SimpleAdmin_FunCommands/Commands.cs`
 
 ## ❌ Common Mistakes
 
@@ -259,6 +265,7 @@ if (Localizer != null)
 
 ## 🔗 See Also
 
+- **[Module translations](https://simpleadmin.miksen.me/extending/translations/)** - The same guide on the documentation site, including localized menu names
 - **[MODULE_DEVELOPMENT.md](./MODULE_DEVELOPMENT.md)** - Complete module development guide
 - **[CS2-SimpleAdmin_FunCommands/README.md](./CS2-SimpleAdmin_FunCommands/README.md)** - Reference implementation
 - **[CounterStrikeSharp Localization](https://docs.cssharp.dev/guides/localization/)** - Official CSS localization docs

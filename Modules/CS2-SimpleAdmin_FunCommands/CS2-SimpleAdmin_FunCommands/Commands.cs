@@ -113,7 +113,7 @@ public partial class CS2_SimpleAdmin_FunCommands
     private void OnGiveWeaponCommand(CCSPlayerController? caller, CommandInfo command)
     {
         var weaponName = command.GetArg(2);
-        if (Enum.TryParse(weaponName, true, out CsItem weapon))
+        if (TryParseWeapon(weaponName, out var weapon))
         {
             var targets = _sharedApi!.GetTarget(command);
             if (targets == null) return;
@@ -195,9 +195,9 @@ public partial class CS2_SimpleAdmin_FunCommands
 
                     // Track speed modification for timer
                     if (speed == 1f)
-                        SpeedPlayers.Remove(player);
+                        SpeedPlayers.Remove(player.Slot);
                     else
-                        SpeedPlayers[player] = speed;
+                        SpeedPlayers[player.Slot] = speed;
 
                     LogAndShowActivity(caller, player, "fun_admin_speed_message", "css_speed", speed.ToString(CultureInfo.InvariantCulture));
                 }
@@ -225,9 +225,9 @@ public partial class CS2_SimpleAdmin_FunCommands
 
                     // Track gravity modification for timer
                     if (gravity == 1f)
-                        GravityPlayers.Remove(player);
+                        GravityPlayers.Remove(player.Slot);
                     else
-                        GravityPlayers[player] = gravity;
+                        GravityPlayers[player.Slot] = gravity;
 
                     LogAndShowActivity(caller, player, "fun_admin_gravity_message", "css_gravity", gravity.ToString(CultureInfo.InvariantCulture));
                 }
@@ -278,6 +278,29 @@ public partial class CS2_SimpleAdmin_FunCommands
                 }
             });
         }
+    }
+
+    /// <summary>
+    /// Parses a weapon name as a CsItem. Accepts the enum name ("ak47", "AK47") as well as
+    /// the game's entity name ("weapon_ak47", "item_kevlar"), which admins usually type.
+    /// Numeric input is rejected: Enum.TryParse would accept any number, even undefined ones.
+    /// </summary>
+    private static bool TryParseWeapon(string input, out CsItem weapon)
+    {
+        weapon = default;
+        var name = input.Trim();
+        if (name.Length == 0 || char.IsDigit(name[0]) || name[0] == '-') return false;
+
+        foreach (var prefix in new[] { "weapon_", "item_" })
+        {
+            if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                name = name[prefix.Length..];
+                break;
+            }
+        }
+
+        return Enum.TryParse(name, true, out weapon) && Enum.IsDefined(weapon) && weapon != CsItem.Tablet;
     }
 
     // =================================

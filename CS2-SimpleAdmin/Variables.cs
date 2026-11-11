@@ -29,6 +29,8 @@ public partial class CS2_SimpleAdmin
     // Voting System
     public static readonly Dictionary<string, int> VoteAnswers = [];
     public static bool VoteInProgress;
+    // Set by "css_adminvoice muteAll", cleared by "unmuteAll": keeps the penalty timer from unmuting players
+    internal static bool AllVoiceMuted;
 
     // Command and Server Settings
     public static readonly bool UnlockedCommands = CoreConfig.UnlockConCommands;

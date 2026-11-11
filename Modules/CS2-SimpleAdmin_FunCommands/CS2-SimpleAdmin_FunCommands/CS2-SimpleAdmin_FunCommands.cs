@@ -70,13 +70,16 @@ public partial class CS2_SimpleAdmin_FunCommands : BasePlugin, IPluginConfig<Con
     /// Track players with modified speed
     /// Dictionary for storing speed values per player
     /// </summary>
-    private static readonly Dictionary<CCSPlayerController, float> SpeedPlayers = [];
+    // Keyed by slot, never by CCSPlayerController: a controller wrapper holds a raw native
+    // pointer that is freed on disconnect, and the repeating timer below would otherwise
+    // dereference it. Slots are re-resolved through Utilities.GetPlayerFromSlot on use.
+    private static readonly Dictionary<int, float> SpeedPlayers = [];
 
     /// <summary>
     /// Track players with modified gravity
     /// Dictionary for storing gravity values per player
     /// </summary>
-    private static readonly Dictionary<CCSPlayerController, float> GravityPlayers = [];
+    private static readonly Dictionary<int, float> GravityPlayers = [];
 
     /// <summary>
     /// BEST PRACTICE: Use capability system to get SimpleAdmin API
@@ -481,9 +484,9 @@ public partial class CS2_SimpleAdmin_FunCommands : BasePlugin, IPluginConfig<Con
                 // Iterate through players with modified speed
                 foreach (var kvp in SpeedPlayers)
                 {
-                    var player = kvp.Key;
+                    var player = Utilities.GetPlayerFromSlot(kvp.Key);
                     // Early validation check - avoid accessing PlayerPawn if player is invalid
-                    if (player.IsValid && player.Connected == PlayerConnectedState.Connected)
+                    if (player is { IsValid: true } && player.Connected == PlayerConnectedState.Connected)
                     {
                         var pawn = player.PlayerPawn?.Value;
                         if (pawn != null && pawn.LifeState == (int)LifeState_t.LIFE_ALIVE)
@@ -499,8 +502,8 @@ public partial class CS2_SimpleAdmin_FunCommands : BasePlugin, IPluginConfig<Con
                 // Iterate through players with modified gravity
                 foreach (var kvp in GravityPlayers)
                 {
-                    var player = kvp.Key;
-                    if (player.IsValid && player.Connected == PlayerConnectedState.Connected)
+                    var player = Utilities.GetPlayerFromSlot(kvp.Key);
+                    if (player is { IsValid: true } && player.Connected == PlayerConnectedState.Connected)
                     {
                         var pawn = player.PlayerPawn?.Value;
                         if (pawn != null && pawn.LifeState == (int)LifeState_t.LIFE_ALIVE)

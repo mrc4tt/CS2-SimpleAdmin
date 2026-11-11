@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Capabilities;
+using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
@@ -83,6 +84,14 @@ public class CS2_SimpleAdmin_ExampleModule: BasePlugin
             _sharedApi = _pluginCapability.Get();
         }
         catch (Exception)
+        {
+            Logger.LogError("CS2-SimpleAdmin API not found - make sure CS2-SimpleAdmin is loaded!");
+            Unload(false);
+            return;
+        }
+
+        // Get() returns null (instead of throwing) when SimpleAdmin is not loaded.
+        if (_sharedApi == null)
         {
             Logger.LogError("CS2-SimpleAdmin API not found - make sure CS2-SimpleAdmin is loaded!");
             Unload(false);
@@ -259,7 +268,7 @@ public class CS2_SimpleAdmin_ExampleModule: BasePlugin
             {
                 var playerInfo = _sharedApi?.GetPlayerInfo(player);
                 player.PrintToChat($"Total Bans: {playerInfo?.TotalBans ?? 0}");
-                player.PrintToChat($"Total Kicks: {playerInfo?.TotalKicks ?? 0}");
+                player.PrintToChat($"Total Silences: {playerInfo?.TotalSilences ?? 0}");
                 player.PrintToChat($"Total Warns: {playerInfo?.TotalWarns ?? 0}");
             }
             catch (Exception ex)
@@ -289,7 +298,7 @@ public class CS2_SimpleAdmin_ExampleModule: BasePlugin
             context,    // ← Contains title and category automatically!
             admin,
             // Filter: Only show valid players that admin can target
-            player => player.IsValid && admin.CanTarget(player),
+            player => player.IsValid && AdminManager.CanPlayerTarget(admin, player),
             // Action: What happens when a player is selected
             (adminPlayer, targetPlayer) =>
             {
@@ -321,7 +330,7 @@ public class CS2_SimpleAdmin_ExampleModule: BasePlugin
 
         // Get all valid, targetable players
         var players = _sharedApi.GetValidPlayers().Where(p =>
-            p.PlayerPawn?.Value?.LifeState == (int)LifeState_t.LIFE_ALIVE && admin.CanTarget(p));
+            p.PlayerPawn?.Value?.LifeState == (int)LifeState_t.LIFE_ALIVE && AdminManager.CanPlayerTarget(admin, p));
 
         foreach (var player in players)
         {
@@ -442,7 +451,6 @@ public class CS2_SimpleAdmin_ExampleModule: BasePlugin
             var playerInfo = _sharedApi?.GetPlayerInfo(caller);
             commandInfo.ReplyToCommand($"Your Statistics:");
             commandInfo.ReplyToCommand($"  Total Bans: {playerInfo?.TotalBans ?? 0}");
-            commandInfo.ReplyToCommand($"  Total Kicks: {playerInfo?.TotalKicks ?? 0}");
             commandInfo.ReplyToCommand($"  Total Gags: {playerInfo?.TotalGags ?? 0}");
             commandInfo.ReplyToCommand($"  Total Mutes: {playerInfo?.TotalMutes ?? 0}");
             commandInfo.ReplyToCommand($"  Total Warns: {playerInfo?.TotalWarns ?? 0}");

@@ -201,7 +201,7 @@ public partial class CS2_SimpleAdmin
         
         reason = string.IsNullOrWhiteSpace(reason) ? _localizer?["sa_unknown"] ?? "Unknown" : reason;
 
-        var time = Math.Max(0, Helper.ParsePenaltyTime(command.GetArg(2)));
+        var time = Helper.ParseOptionalPenaltyTime(command, 2);
         if (!CheckValidBan(caller, time)) return;
 
         var adminInfo = caller != null && caller.UserId.HasValue
@@ -270,7 +270,7 @@ public partial class CS2_SimpleAdmin
         
         reason = string.IsNullOrWhiteSpace(reason) ? _localizer?["sa_unknown"] ?? "Unknown" : reason;
 
-        var time = Math.Max(0, Helper.ParsePenaltyTime(command.GetArg(2)));
+        var time = Helper.ParseOptionalPenaltyTime(command, 2);
 
         if (!CheckValidBan(caller, time)) return;
 
@@ -304,6 +304,19 @@ public partial class CS2_SimpleAdmin
         Helper.LogCommand(caller, command);
     }
 
+    private const string InvalidTimeMessage = "Invalid time. Use minutes, 0 for permanent, or units like 30m, 12h, 3d, 2w, 1mo, 1y.";
+
+    /// <summary>
+    /// Tells the caller (or the server console) that the given penalty time could not be parsed.
+    /// </summary>
+    private void ReplyInvalidTime(CCSPlayerController? caller)
+    {
+        if (caller == null || !caller.IsValid)
+            Server.PrintToConsole(InvalidTimeMessage);
+        else
+            caller.PrintToChat($"{_localizer?["sa_prefix"]} {InvalidTimeMessage}");
+    }
+
     /// <summary>
     /// Checks whether the ban duration is valid based on the caller's permissions and configured limits.
     /// </summary>
@@ -312,6 +325,12 @@ public partial class CS2_SimpleAdmin
     /// <returns>True if ban duration is valid; otherwise, false.</returns>
     private bool CheckValidBan(CCSPlayerController? caller, int duration)
     {
+        if (duration < 0)
+        {
+            ReplyInvalidTime(caller);
+            return false;
+        }
+
         if (caller == null) return true;
 
         var canPermBan = AdminManager.PlayerHasPermissions(new SteamID(caller.SteamID), "@css/permban");
@@ -369,9 +388,17 @@ public partial class CS2_SimpleAdmin
             return;
         }
 
-        Task.Run(async () => await BanManager.UnbanPlayer(pattern, callerSteamId, reason));
         Helper.LogCommand(caller, command);
-        command.ReplyToCommand($"Unbanned player with pattern {pattern}.");
+        Task.Run(async () =>
+        {
+            var count = await BanManager.UnbanPlayer(pattern, callerSteamId, reason);
+            await Server.NextWorldUpdateAsync(() =>
+            {
+                command.ReplyToCommand(count > 0
+                    ? $"Unbanned {count} ban(s) matching {pattern}."
+                    : $"No active ban matches {pattern}. Use the exact SteamID64, name or IP, or #id from css_banlist.");
+            });
+        });
     }
 
     /// <summary>
@@ -398,7 +425,7 @@ public partial class CS2_SimpleAdmin
             return;
         }
 
-        var time = Math.Max(0, Helper.ParsePenaltyTime(command.GetArg(2)));
+        var time = Helper.ParseOptionalPenaltyTime(command, 2);
         var reason = command.ArgCount >= 3
             ? string.Join(" ", Enumerable.Range(3, command.ArgCount - 3).Select(command.GetArg)).Trim()
             : _localizer?["sa_unknown"] ?? "Unknown";
@@ -579,20 +606,53 @@ public partial class CS2_SimpleAdmin
     /// <param name="caller">The player issuing the unwarn command.</param>
     /// <param name="command">The command containing target pattern.</param>
     [RequiresPermissions("@css/kick")]
-    [CommandHelper(minArgs: 1, usage: "<steamid or name or ip>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    [CommandHelper(minArgs: 1, usage: "<steamid64 or online player's name or ip>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnUnwarnCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (DatabaseProvider == null) return;
 
-        if (command.GetArg(1).Length <= 1)
+        var pattern = command.GetArg(1);
+        if (pattern.Length <= 1)
         {
             command.ReplyToCommand($"Too short pattern to search.");
             return;
         }
 
-        var pattern = command.GetArg(1);
-        Task.Run(async () => await WarnManager.UnwarnPlayer(pattern));
+        // Warnings are stored by SteamID64. A name or IP is resolved to the SteamID of the online player using it.
+        string steamId64;
+        if (pattern.Length >= 17 && ulong.TryParse(pattern, out var parsedSteamId))
+        {
+            steamId64 = parsedSteamId.ToString();
+        }
+        else
+        {
+            var matches = Helper.IsValidIp(pattern)
+                ? Helper.GetPlayerFromIp(pattern)
+                : Helper.GetPlayerFromName(pattern);
+            matches = matches.Where(p => p is { IsValid: true, IsBot: false }).ToList();
+
+            if (matches.Count != 1)
+            {
+                command.ReplyToCommand(matches.Count == 0
+                    ? $"No online player matches {pattern}. Use the SteamID64 for offline players."
+                    : $"More than one player matches {pattern}. Use the SteamID64.");
+                return;
+            }
+
+            if (!caller.CanTarget(matches[0])) return;
+            steamId64 = matches[0].SteamID.ToString();
+        }
+
         Helper.LogCommand(caller, command);
-        command.ReplyToCommand($"Unwarned player with pattern {pattern}.");
+        Task.Run(async () =>
+        {
+            var removed = await WarnManager.UnwarnPlayer(steamId64);
+            await Server.NextWorldUpdateAsync(() =>
+            {
+                command.ReplyToCommand(removed
+                    ? $"Removed the latest active warning of {steamId64}."
+                    : $"{steamId64} has no active warnings.");
+            });
+        });
     }
 }
