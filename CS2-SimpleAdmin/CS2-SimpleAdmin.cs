@@ -56,13 +56,15 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
                             CachedPlayers.Add(player);
                         PlayerManager.LoadPlayerData(player, true);
                     }
-                    else
+                    else if (!BotPlayers.Contains(player))
                         BotPlayers.Add(player);
                 };
             });
             
             PlayersTimer?.Kill();
             PlayersTimer = null;
+            RenameTimer?.Kill();
+            RenameTimer = null;
         }
         _cBasePlayerControllerSetPawnFunc = new MemoryFunctionVoid<CBasePlayerController, CCSPlayerPawn, bool, bool>(GameData.GetSignature("CBasePlayerController_SetPawn"));
 
@@ -71,6 +73,8 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         
         PlayersTimer?.Kill();
         PlayersTimer = null;
+        RenameTimer?.Kill();
+        RenameTimer = null;
         PlayerManager.CheckPlayersTimer();
         
         Menus.AdminMenuRegistry.Instance.InitializeDefaultCategories();
@@ -272,6 +276,8 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         CacheManager = null;
         PlayersTimer?.Kill();
         PlayersTimer = null;
+        RenameTimer?.Kill();
+        RenameTimer = null;
 
         UnregisterEvents();
 
