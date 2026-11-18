@@ -252,8 +252,40 @@ internal class PlayerManager
             finally
             {
                 _loadPlayerSemaphore.Release();
+
+                if (steamId != 0)
+                    await ForgetIfDisconnectedAsync(userId, steamId);
             }
         });
+    }
+
+    /// <summary>
+    /// Drops the per-connection state written by <see cref="LoadPlayerData"/> when the player left while the
+    /// background load was still running. The disconnect handler has already run in that case, so nothing
+    /// else would remove these entries.
+    /// </summary>
+    private async Task ForgetIfDisconnectedAsync(int userId, ulong steamId)
+    {
+        try
+        {
+            await Server.NextWorldUpdateAsync(() =>
+            {
+                var current = Utilities.GetPlayerFromUserid(userId);
+                if (current is { IsValid: true } && current.SteamID == steamId)
+                    return;
+
+                ForgetBanCheck(userId);
+
+                // Only remove the entry this load created; a quick reconnect owns a newer one.
+                if (CS2_SimpleAdmin.PlayersInfo.TryGetValue(steamId, out var info) && info.UserId == userId)
+                    CS2_SimpleAdmin.PlayersInfo.TryRemove(steamId, out _);
+            });
+        }
+        catch (Exception ex)
+        {
+            CS2_SimpleAdmin._logger?.LogDebug("Could not verify connection state for {steamId}: {exception}",
+                steamId, ex.Message);
+        }
     }
 
     /// <summary>
@@ -392,7 +424,8 @@ internal class PlayerManager
     /// </remarks>
     public void CheckPlayersTimer()
     {
-        CS2_SimpleAdmin.Instance.AddTimer(5f, () =>
+        CS2_SimpleAdmin.Instance.RenameTimer?.Kill();
+        CS2_SimpleAdmin.Instance.RenameTimer = CS2_SimpleAdmin.Instance.AddTimer(5f, () =>
         {
             foreach (var (steamid, name) in CS2_SimpleAdmin.RenamedPlayers)
             {

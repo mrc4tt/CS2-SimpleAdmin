@@ -243,7 +243,8 @@ public partial class CS2_SimpleAdmin
 
         if (player.IsBot)
         {
-            BotPlayers.Add(player);
+            if (!BotPlayers.Contains(player))
+                BotPlayers.Add(player);
             return HookResult.Continue;
         }
 
@@ -474,6 +475,11 @@ public partial class CS2_SimpleAdmin
 
         SilentPlayers.Clear();
         ResetTeamSelectLock();
+
+        // A disconnect event that never arrived (or arrived with an invalid controller) leaves the
+        // wrapper in these lists; drop the ones whose entity is gone.
+        CachedPlayers.RemoveAll(p => !p.IsValid);
+        BotPlayers.RemoveAll(p => !p.IsValid);
 
         PlayerPenaltyManager.RemoveAllPenalties();
     }

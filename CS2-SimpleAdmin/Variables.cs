@@ -80,6 +80,7 @@ public partial class CS2_SimpleAdmin
 
     // Timers
     internal Timer? PlayersTimer = null;
+    internal Timer? RenameTimer = null;
     
     // Funny list
     private readonly List<string> _requiredPlugins = ["CS2MenuManager_MenuManager"];
