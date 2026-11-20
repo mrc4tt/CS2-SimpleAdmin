@@ -84,7 +84,9 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
     public override void OnAllPluginsLoaded(bool hotReload)
     {
         RegisterEvents();
-        AddTimer(0.5f, RegisterCommands.InitializeCommands);
+        // Registered right away, not from a timer: timers only tick with the server, so on an
+        // empty hibernating server the commands (css_addadmin from console) never showed up.
+        RegisterCommands.InitializeCommands();
         // Admins are reloaded by ServerManager once ServerId is known (or on its failure paths).
         // Loading the plugin mid-map (css_plugins load) fires no map start, so kick server loading off ourselves.
         AddTimer(5.0f, () =>
