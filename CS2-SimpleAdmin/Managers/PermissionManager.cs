@@ -347,13 +347,24 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
 		// 	Console.WriteLine();
 		// }
 
+		// One entry per SteamID. Grouping by name merged admins sharing a name (or having none)
+		// into a single identity, leaving the others without permissions.
+		var usedKeys = new HashSet<string>();
 		var jsonData = validPlayers
-			.GroupBy(player => player.name) // Group by player name
+			.GroupBy(player => player.identity)
 			.ToDictionary(
-				group => group.Key, // Use the player name as key
+				group =>
+				{
+					// The key is only a label for CounterStrikeSharp; it just has to be unique
+					var name = group.First().name;
+					if (!string.IsNullOrEmpty(name) && usedKeys.Add(name)) return name;
+					var key = group.Key.ToString();
+					for (var n = 2; !usedKeys.Add(key); n++) key = $"{group.Key}_{n}";
+					return key;
+				},
 				object (group) =>
 				{
-					// Consolidate data for players with same name
+					// Consolidate the rows (global + per server) of one admin
 					var consolidatedData = group.Aggregate(
 						new
 						{
