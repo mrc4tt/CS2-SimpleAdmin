@@ -191,7 +191,14 @@ public partial class CS2_SimpleAdmin_FunCommands
             context,
             admin,
             player => player.PlayerPawn?.Value?.LifeState == (int)LifeState_t.LIFE_ALIVE && admin.CanTarget(player),
-            (adminPlayer, targetPlayer) => { Freeze(adminPlayer, targetPlayer, -1); });
+            (adminPlayer, targetPlayer) =>
+            {
+                // Picking an already frozen player again unfreezes them.
+                if (targetPlayer.Pawn.Value?.MoveType == MoveType_t.MOVETYPE_INVALID)
+                    Unfreeze(adminPlayer, targetPlayer);
+                else
+                    Freeze(adminPlayer, targetPlayer, -1);
+            });
     }
 
     /// <summary>
