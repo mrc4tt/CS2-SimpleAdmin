@@ -26,8 +26,9 @@ public partial class CS2_SimpleAdmin
         // RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
         RegisterListener<Listeners.OnClientConnected>(OnClientConnected);
         RegisterListener<Listeners.OnGameServerSteamAPIActivated>(OnGameServerSteamAPIActivated);
-        if (Config.OtherSettings.UserMessageGagChatType)
-            HookUserMessage(118, HookUmChat);
+        // Always hooked: a gagged player's "!text" / "/text" passes the say listener so chat
+        // commands keep working, and this is what keeps that text away from everyone else.
+        HookUserMessage(118, HookUmChat);
         
         AddCommandListener(null, ComamndListenerHandler);
         // AddCommandListener("callvote", OnCommandCallVote);
@@ -43,8 +44,7 @@ public partial class CS2_SimpleAdmin
         // ever gets re-enabled. Keep this list mirroring RegisterEvents.
         RemoveListener<Listeners.OnClientConnected>(OnClientConnected);
         RemoveListener<Listeners.OnGameServerSteamAPIActivated>(OnGameServerSteamAPIActivated);
-        if (Config.OtherSettings.UserMessageGagChatType)
-            UnhookUserMessage(118, HookUmChat);
+        UnhookUserMessage(118, HookUmChat);
 
         RemoveCommandListener(null!, ComamndListenerHandler, HookMode.Pre);
         // AddCommandListener("callvote", OnCommandCallVote);
@@ -291,9 +291,6 @@ public partial class CS2_SimpleAdmin
 
         if (!PlayerPenaltyManager.IsPenalized(author.Slot, PenaltyType.Gag, out DateTime? endDateTime) &&
             !PlayerPenaltyManager.IsPenalized(author.Slot, PenaltyType.Silence, out endDateTime))
-            return HookResult.Continue;
-    
-        if (_localizer == null || endDateTime == null)
             return HookResult.Continue;
 
         var message = um.ReadString("param2");
