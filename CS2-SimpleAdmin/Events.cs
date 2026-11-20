@@ -17,7 +17,8 @@ namespace CS2_SimpleAdmin;
 
 public partial class CS2_SimpleAdmin
 {
-    private bool _serverLoading;
+    // Reset by ServerManager when loading fails, so the next map start (or its retry timer) tries again
+    internal volatile bool _serverLoading;
     
     private void RegisterEvents()
     {
@@ -70,7 +71,7 @@ public partial class CS2_SimpleAdmin
     //     return !AdminManager.CanPlayerTarget(caller, target) ? HookResult.Stop : HookResult.Continue;
     // }
 
-    private void OnGameServerSteamAPIActivated()
+    internal void OnGameServerSteamAPIActivated()
     {
         if (ServerLoaded || _serverLoading)
             return;
