@@ -33,7 +33,11 @@ public class ServerManager
     {
         CS2_SimpleAdmin.Instance.AddTimer(1.0f, () =>
         {
-            if (CS2_SimpleAdmin.ServerLoaded || CS2_SimpleAdmin.DatabaseProvider == null) return;
+            if (CS2_SimpleAdmin.ServerLoaded || CS2_SimpleAdmin.DatabaseProvider == null)
+            {
+                CS2_SimpleAdmin.Instance._serverLoading = false;
+                return;
+            }
 
             // Optimization: Get server IP once and reuse
             var serverIp = Helper.GetServerIp();
@@ -43,6 +47,7 @@ public class ServerManager
             if (_getIpTryCount > 32 && isInvalidIp)
             {
                 CS2_SimpleAdmin._logger?.LogError("Unable to load server data - can't fetch ip address!");
+                CS2_SimpleAdmin.Instance._serverLoading = false; // next map start tries again
                 CS2_SimpleAdmin.Instance.ReloadAdmins(null); // still load global admins
                 _ = CS2_SimpleAdmin.PlayerManager.LoadRenamedPlayers();
                 return;
@@ -119,6 +124,12 @@ public class ServerManager
                 {
                     CS2_SimpleAdmin._logger?.LogCritical("Unable to create or get server_id: " + ex.Message);
                     CS2_SimpleAdmin.Instance.ReloadAdmins(null); // still load global admins
+
+                    // Without a ServerId the admins and groups bound to this server stay missing, and
+                    // nothing used to try again until the plugin was reloaded. Retry until it works.
+                    CS2_SimpleAdmin.Instance._serverLoading = false;
+                    _ = Server.NextWorldUpdateAsync(() =>
+                        CS2_SimpleAdmin.Instance.AddTimer(30.0f, CS2_SimpleAdmin.Instance.OnGameServerSteamAPIActivated));
                 }
 
                 // Renames are server-independent, so load them even when the server row could not be resolved
