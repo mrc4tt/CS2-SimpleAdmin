@@ -667,9 +667,9 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
             var sql = databaseProvider.GetDeleteOldAdminsQuery();
             await connection.ExecuteAsync(sql, new { CurrentTime = Time.ActualDateTime() });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            CS2_SimpleAdmin._logger?.LogCritical("Unable to remove expired admins");
+            CS2_SimpleAdmin._logger?.LogCritical(ex, "Unable to remove expired admins");
         }
     }
 }

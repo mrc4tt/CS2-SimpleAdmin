@@ -516,9 +516,9 @@ internal class BanManager(IDatabaseProvider? databaseProvider)
                 await connection.ExecuteAsync(sql, new { ipBansTime });
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            CS2_SimpleAdmin._logger?.LogCritical("Unable to remove expired bans");
+            CS2_SimpleAdmin._logger?.LogCritical(ex, "Unable to remove expired bans");
         }
     }
 }

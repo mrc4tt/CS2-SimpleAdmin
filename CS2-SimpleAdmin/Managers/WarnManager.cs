@@ -220,7 +220,7 @@ internal class WarnManager(IDatabaseProvider? databaseProvider)
         }
         catch (Exception ex)
         {
-            CS2_SimpleAdmin._logger?.LogCritical($"Unable to remove expired warns + {ex}");
+            CS2_SimpleAdmin._logger?.LogCritical(ex, "Unable to remove expired warns");
         }
     }
 }
