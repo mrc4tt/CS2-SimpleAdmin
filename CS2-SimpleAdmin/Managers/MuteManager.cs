@@ -292,9 +292,9 @@ internal class MuteManager(IDatabaseProvider? databaseProvider)
             var sql = databaseProvider.GetExpireMutesQuery(CS2_SimpleAdmin.Instance.Config.MultiServerMode, CS2_SimpleAdmin.Instance.Config.OtherSettings.TimeMode);
             await connection.ExecuteAsync(sql, new { CurrentTime = Time.ActualDateTime(), serverid = CS2_SimpleAdmin.ServerId });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            CS2_SimpleAdmin._logger?.LogCritical("Unable to remove expired mutes");
+            CS2_SimpleAdmin._logger?.LogCritical(ex, "Unable to remove expired mutes");
         }
     }
 }

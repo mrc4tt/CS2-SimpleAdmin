@@ -14,21 +14,73 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
 
     public async Task<DbConnection> CreateConnectionAsync()
     {
+        try
+        {
+            return await OpenConnectionAsync();
+        }
+        catch (SQLiteException ex) when (ex.ResultCode == SQLiteErrorCode.CantOpen)
+        {
+            // CantOpen on a database that opened fine at startup means the
+            // process ran out of file descriptors or the file/directory went
+            // away. Dropping pooled connections releases their descriptors, so
+            // one retry recovers from the first case; the log line tells the
+            // two apart.
+            CS2_SimpleAdmin._logger?.LogWarning(
+                "SQLite could not open {Path} ({State}); clearing the connection pool and retrying",
+                _filePath, DescribeOpenFailure());
+
+            SQLiteConnection.ClearAllPools();
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
+            return await OpenConnectionAsync();
+        }
+    }
+
+    private async Task<DbConnection> OpenConnectionAsync()
+    {
         var conn = new SQLiteConnection(_connectionString);
-        await conn.OpenAsync();
+        try
+        {
+            await conn.OpenAsync();
 
-        // journal_mode=WAL is persistent on disk and applied once via InitializeAsync.
-        // The remaining pragmas are per-connection and cheap enough to set on every open.
-        await using var pragma = conn.CreateCommand();
-        pragma.CommandText = """
-                             PRAGMA synchronous=NORMAL;
-                             PRAGMA temp_store=MEMORY;
-                             PRAGMA mmap_size=67108864;
-                             PRAGMA foreign_keys=ON;
-                             """;
-        await pragma.ExecuteNonQueryAsync();
+            // journal_mode=WAL is persistent on disk and applied once via InitializeAsync.
+            // The remaining pragmas are per-connection and cheap enough to set on every open.
+            await using var pragma = conn.CreateCommand();
+            pragma.CommandText = """
+                                 PRAGMA synchronous=NORMAL;
+                                 PRAGMA temp_store=MEMORY;
+                                 PRAGMA mmap_size=67108864;
+                                 PRAGMA foreign_keys=ON;
+                                 """;
+            await pragma.ExecuteNonQueryAsync();
 
-        return conn;
+            return conn;
+        }
+        catch
+        {
+            // Without this a failed open leaves the handle to the finalizer.
+            await conn.DisposeAsync();
+            throw;
+        }
+    }
+
+    private string DescribeOpenFailure()
+    {
+        string openDescriptors;
+        try
+        {
+            openDescriptors = Directory.GetFileSystemEntries("/proc/self/fd").Length.ToString();
+        }
+        catch
+        {
+            // Listing needs a descriptor itself, so this also fails at the limit.
+            openDescriptors = "unknown";
+        }
+
+        return $"file exists: {File.Exists(_filePath)}, " +
+               $"directory exists: {Directory.Exists(Path.GetDirectoryName(_filePath))}, " +
+               $"open file descriptors: {openDescriptors}";
     }
 
     public async Task InitializeAsync()
