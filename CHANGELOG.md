@@ -4,6 +4,21 @@ Notable changes for server admins. Internal refactors, CI and build tweaks are l
 
 Releases are tagged `vX.Y.Z` (older releases used `build-X.Y.Z`).
 
+## [1.9.9] - 2026-11-25
+
+### Changed
+
+- fix(comms): keep mutes, gags and silences after a map change
+- fix(sqlite): retry and report when the database file cannot be opened
+- fix(admins): keep permissions for admins that share a name
+- fix(admins): retry loading the server id after a failed start
+- fix(funcommands): unfreeze a frozen player picked again in the freeze menu
+- fix(commands): register commands on load instead of from a timer
+- fix(comms): stop gagged players from chatting with a ! prefix
+- fix(players): drop per-player state left behind after a disconnect
+- fix: correct usage text for css_addsilence and css_unmute
+- fix(lang): add missing zh-Hans chat block message
+
 ## [1.9.8] - 2026-11-11
 
 ### Security
