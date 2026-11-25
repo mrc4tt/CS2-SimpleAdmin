@@ -149,52 +149,7 @@ internal class PlayerManager
                             value.TotalSilences = totalSilences;
                             value.TotalWarns = warns.Count;
 
-                            var activeMutes =
-                                await CS2_SimpleAdmin.Instance.MuteManager.IsPlayerMuted(value.SteamId.SteamId64
-                                    .ToString());
-
-                            if (activeMutes.Count > 0)
-                            {
-                                foreach (var mute in activeMutes)
-                                {
-                                    string muteType = mute.type;
-                                    DateTime ends = mute.ends;
-                                    int duration = mute.duration;
-                                    switch (muteType)
-                                    {
-                                        // Apply mute penalty based on mute type
-                                        case "GAG":
-                                            PlayerPenaltyManager.AddPenalty(
-                                                CS2_SimpleAdmin.PlayersInfo[steamId].Slot,
-                                                PenaltyType.Gag, ends, duration);
-                                            // if (CS2_SimpleAdmin._localizer != null)
-                                            // 	mutesList[PenaltyType.Gag].Add(CS2_SimpleAdmin._localizer["sa_player_penalty_info_active_gag", ends.ToLocalTime().ToString(CultureInfo.CurrentCulture)]);
-                                            break;
-                                        case "MUTE":
-                                            PlayerPenaltyManager.AddPenalty(
-                                                CS2_SimpleAdmin.PlayersInfo[steamId].Slot,
-                                                PenaltyType.Mute, ends, duration);
-                                            await Server.NextWorldUpdateAsync(() =>
-                                            {
-                                                player.VoiceFlags = VoiceFlags.Muted;
-                                            });
-                                            // if (CS2_SimpleAdmin._localizer != null)
-                                            // 	mutesList[PenaltyType.Mute].Add(CS2_SimpleAdmin._localizer["sa_player_penalty_info_active_mute", ends.ToLocalTime().ToString(CultureInfo.InvariantCulture)]);
-                                            break;
-                                        default:
-                                            PlayerPenaltyManager.AddPenalty(
-                                                CS2_SimpleAdmin.PlayersInfo[steamId].Slot,
-                                                PenaltyType.Silence, ends, duration);
-                                            await Server.NextWorldUpdateAsync(() =>
-                                            {
-                                                player.VoiceFlags = VoiceFlags.Muted;
-                                            });
-                                            // if (CS2_SimpleAdmin._localizer != null)
-                                            // 	mutesList[PenaltyType.Silence].Add(CS2_SimpleAdmin._localizer["sa_player_penalty_info_active_silence", ends.ToLocalTime().ToString(CultureInfo.CurrentCulture)]);
-                                            break;
-                                    }
-                                }
-                            }
+                            await ApplyActiveMutesAsync(player, slot, steamId);
 
                             if (CS2_SimpleAdmin.Instance.Config.OtherSettings.NotifyPenaltiesToAdminOnConnect)
                             {
@@ -248,6 +203,21 @@ internal class PlayerManager
                             ex.Message);
                     }
                 }
+                else if (fullConnect && !PlayerPenaltyManager.IsSlotInPenalties(slot))
+                {
+                    // player_connect_full fires again after a map change, but the player never disconnected, so
+                    // the block above is skipped while OnMapStart has already wiped the in-memory penalties.
+                    // Restore them from the database, otherwise an active mute/gag silently stops applying.
+                    try
+                    {
+                        await ApplyActiveMutesAsync(player, slot, steamId);
+                    }
+                    catch (Exception ex)
+                    {
+                        CS2_SimpleAdmin._logger?.LogError("Error restoring player penalties: {exception}",
+                            ex.Message);
+                    }
+                }
             }
             finally
             {
@@ -255,6 +225,56 @@ internal class PlayerManager
 
                 if (steamId != 0)
                     await ForgetIfDisconnectedAsync(userId, steamId);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Loads the player's active gags/mutes/silences from the database and applies them to their slot.
+    /// Entries already tracked for the slot are left alone, so calling this twice does not duplicate them.
+    /// </summary>
+    private static async Task ApplyActiveMutesAsync(CCSPlayerController player, int slot, ulong steamId)
+    {
+        var activeMutes = await CS2_SimpleAdmin.Instance.MuteManager.IsPlayerMuted(steamId.ToString());
+        if (activeMutes.Count == 0)
+            return;
+
+        var penalties = new List<(PenaltyType Type, DateTime Ends, int Duration)>(activeMutes.Count);
+        foreach (var mute in activeMutes)
+        {
+            string muteType = mute.type;
+            DateTime ends = mute.ends;
+            int duration = mute.duration;
+            var type = muteType switch
+            {
+                "GAG" => PenaltyType.Gag,
+                "MUTE" => PenaltyType.Mute,
+                _ => PenaltyType.Silence
+            };
+            penalties.Add((type, ends, duration));
+        }
+
+        await Server.NextWorldUpdateAsync(() =>
+        {
+            // The slot may have been handed to someone else while the query was running
+            if (!player.IsValid || player.Slot != slot || player.SteamID != steamId)
+                return;
+
+            foreach (var (type, ends, duration) in penalties)
+            {
+                var alreadyTracked = false;
+                foreach (var existing in PlayerPenaltyManager.GetPlayerPenalties(slot, type))
+                {
+                    if (existing.EndDateTime != ends || existing.Duration != duration) continue;
+                    alreadyTracked = true;
+                    break;
+                }
+
+                if (!alreadyTracked)
+                    PlayerPenaltyManager.AddPenalty(slot, type, ends, duration);
+
+                if (type != PenaltyType.Gag)
+                    player.VoiceFlags = VoiceFlags.Muted;
             }
         });
     }
