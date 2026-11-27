@@ -4,6 +4,12 @@ Notable changes for server admins. Internal refactors, CI and build tweaks are l
 
 Releases are tagged `vX.Y.Z` (older releases used `build-X.Y.Z`).
 
+## [1.9.10] - 2026-11-27
+
+### Changed
+
+- fix(comms): lift gags, mutes and silences on online players
+
 ## [1.9.9] - 2026-11-25
 
 ### Changed
