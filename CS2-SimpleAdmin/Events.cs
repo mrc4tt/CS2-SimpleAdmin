@@ -249,6 +249,10 @@ public partial class CS2_SimpleAdmin
             return HookResult.Continue;
         }
 
+        // OnClientConnected can run before the controller is valid and then skips the player
+        if (!CachedPlayers.Contains(player))
+            CachedPlayers.Add(player);
+
         PlayerManager.LoadPlayerData(player, true);
         return HookResult.Continue;
     }

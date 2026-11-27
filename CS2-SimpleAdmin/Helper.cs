@@ -51,14 +51,32 @@ internal static class Helper
         }
     }
 
+    /// <summary>
+    /// Connected human players read straight from the server. Name/SteamID lookups use this instead of
+    /// <see cref="CS2_SimpleAdmin.CachedPlayers"/>: a player missing from that cache was treated as offline,
+    /// so commands like css_ungag/css_unmute/css_unsilence only touched the database and left the live penalty on.
+    /// </summary>
+    private static List<CCSPlayerController> GetConnectedHumans()
+    {
+        return Utilities.GetPlayers().FindAll(p =>
+            p is { IsValid: true, IsBot: false, IsHLTV: false, Connected: PlayerConnectedState.Connected });
+    }
+
+    /// <summary>
+    /// Finds online players by name: exact (case-insensitive) matches first, otherwise names containing the text.
+    /// </summary>
     public static List<CCSPlayerController> GetPlayerFromName(string name)
     {
-        return GetValidPlayers().FindAll(x => x.PlayerName.Equals(name, StringComparison.OrdinalIgnoreCase));
+        var players = GetConnectedHumans();
+        var exact = players.FindAll(x => x.PlayerName.Equals(name, StringComparison.OrdinalIgnoreCase));
+        return exact.Count > 0
+            ? exact
+            : players.FindAll(x => x.PlayerName.Contains(name, StringComparison.OrdinalIgnoreCase));
     }
 
     public static CCSPlayerController? GetPlayerFromSteamid64(ulong steamid)
     {
-        return GetValidPlayers().FirstOrDefault(x => x.SteamID == steamid);
+        return GetConnectedHumans().FirstOrDefault(x => x.SteamID == steamid);
     }
 
     public static List<CCSPlayerController> GetPlayerFromIp(string ipAddress)
